@@ -11,7 +11,6 @@ namespace UNetwork
 			// ushort opcode = BitConverter.ToUInt16(buffer, Packet.OpcodeIndex);
 			string opcode = Encoding.UTF8.GetString(buffer);
 //			object message = this.Network.MessagePacker.DeserializeFrom(null, memoryStream);
-			TestClient.Receive();
 			Debug.Log("receive msg：" + opcode);
 		}
 	}
