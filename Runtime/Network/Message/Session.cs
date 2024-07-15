@@ -32,10 +32,10 @@ namespace UNetwork
         {
             if (Manager.OnConnect != null)
             {
-                Manager.OnConnect.Invoke(0);
+                Manager.OnConnect.Invoke(code);
             }
 
-            Debug.Log("OnConnect" + code);
+            Debug.Log("OnConnect");
         }
 
         private void OnError(AChannel channel, int code)

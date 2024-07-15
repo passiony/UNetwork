@@ -52,7 +52,6 @@ namespace UNetwork
 
         public void OnConnect(int code)
         {
-            Debug.Log("connect success");
             this.connectCallback.Invoke(this, code);
         }
 
