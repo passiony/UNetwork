@@ -1,0 +1,29 @@
+{
+  "name": "com.txnet.unetwork",
+  "displayName": "UNetwork",
+  "description": "A p2p toolkit with socket",
+  "version": "1.0.1",
+  "unity": "2018.4",
+  "author": {
+    "name": "passion",
+    "email": "passion@gmail.cn",
+    "url": "https://txnet.cn/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/passiony/UNetwork.git",
+    "hash":"8d0cbb7653a1168dfa5c23d77a8e033ac14732d8"
+  },
+  "samples": [
+    {
+      "displayName": "Server",
+      "description": "Server Demo",
+      "path": "Samples~/Socket"
+    },
+    {
+      "displayName": "Client",
+      "description": "Client Demo",
+      "path": "Samples~/Client"
+    }
+  ]
+}
