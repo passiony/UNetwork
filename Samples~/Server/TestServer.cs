@@ -27,7 +27,7 @@ public class TestServer : MonoBehaviour
     private void OnMessage(byte[] obj)
     {
         var msg = Encoding.UTF8.GetString(obj);
-        Debug.Log($"Receive =>{obj.Length}:" + msg);
+        Debug.Log($"Receive=>{obj.Length}:" + msg);
     }
 
     private void OnError(int e)
@@ -45,7 +45,7 @@ public class TestServer : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
             var data = Encoding.UTF8.GetBytes(sendMessage);
-            Debug.Log($"Send:{data.Length}:" + sendMessage);
+            Debug.Log($"Send=>{data.Length}:" + sendMessage);
 
             ServerManager.Instance.Send(data);
             starttime = GetTimeStamp();
