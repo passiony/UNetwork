@@ -14,12 +14,18 @@ public class TestClient : MonoBehaviour
 
     void Start()
     {
+        //获取实例
         ClientManager client = ClientManager.Instance;
+        //初始化客户端，以TCP
         client.InitService(NetworkProtocol.TCP);
+        //设置消息packer(json,protobuf)
         client.MessagePacker = new ProtobufPacker();
+        //设置消息分发（可选）
         client.MessageDispatcher = new OuterMessageDispatcher();
 
+        //连接服务器
         client.Connect(ip,port);
+        //设置网络事件回调
         client.OnConnect += OnConnect;
         client.OnError += OnError;
         client.OnMessage += OnMessage;
