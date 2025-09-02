@@ -34,7 +34,7 @@ namespace UNetwork
             var bytes = new byte[memoryStream.Length];
             memoryStream.Read(bytes, 0, bytes.Length);
 
-            ServerManager.Instance.OnMessage?.Invoke(bytes);
+            ServerComponent.Instance.OnMessage?.Invoke(bytes);
         }
 
         public void OnRead(MemoryStream memoryStream)

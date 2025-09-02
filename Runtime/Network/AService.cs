@@ -7,6 +7,7 @@ namespace UNetwork
 	{
 		KCP,
 		TCP,
+		Modbus,
 		WebSocket,
 	}
 

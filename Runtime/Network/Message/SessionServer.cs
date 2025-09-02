@@ -11,7 +11,7 @@ namespace UNetwork
 
         private readonly byte[] opcodeBytes = new byte[2];
 
-        public INetworkManager Manager { get; set; }
+        public INetworkComponent Component { get; set; }
 
         public int Error
         {
@@ -30,9 +30,9 @@ namespace UNetwork
 
         private void OnConnect(AChannel channel, int code)
         {
-            if (Manager.OnConnect != null)
+            if (Component.OnConnect != null)
             {
-                Manager.OnConnect.Invoke(0);
+                Component.OnConnect.Invoke(0);
             }
 
             Debug.Log("OnConnect" + code);
@@ -40,9 +40,9 @@ namespace UNetwork
 
         private void OnError(AChannel channel, int code)
         {
-            if (Manager.OnError != null)
+            if (Component.OnError != null)
             {
-                Manager.OnError.Invoke(code);
+                Component.OnError.Invoke(code);
             }
 
             Debug.LogError("OnError:" + code);
@@ -60,10 +60,10 @@ namespace UNetwork
             this.channel.Dispose();
         }
 
-        public void Start(INetworkManager manager)
+        public void Start(INetworkComponent component)
         {
             this.channel.Start();
-            Manager = manager;
+            Component = component;
         }
 
         public IPEndPoint RemoteAddress
@@ -89,7 +89,7 @@ namespace UNetwork
             memoryStream.Read(bytes, 0, bytes.Length);
 
             // Manager.MessageDispatcher.Dispatch(this, memoryStream.GetBuffer());
-            Manager.OnMessage?.Invoke(memoryStream.GetBuffer());
+            Component.OnMessage?.Invoke(memoryStream.GetBuffer());
         }
 
         public void OnRead(MemoryStream memoryStream)

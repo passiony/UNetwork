@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System;
+using System.Net;
+using System.Text;
 
 namespace UNetwork
 {
@@ -91,5 +93,98 @@ namespace UNetwork
 			bytes[offset] = (byte)(num & 0xff);
 			bytes[offset + 1] = (byte)((num & 0xff00) >> 8);
 		}
+		
+		/// <summary>
+        /// 将 ushort 转换为字节数组，大端
+        /// </summary>
+        public static byte[] ToBigBytes(this ushort value, bool isBigEndian)
+        {
+            // 若需大端序且当前系统为小端序，则转换字节序
+            byte[] bytes =
+                BitConverter.GetBytes(isBigEndian ? (ushort)IPAddress.HostToNetworkOrder((short)value) : value);
+            return bytes;
+        }
+
+        /// <summary>
+        /// 将 int 转换为字节数组，大端
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="isBigEndian"></param>
+        /// <returns></returns>
+        public static byte[] ToBigBytes(this int value, bool isBigEndian)
+        {
+            // 若需大端序且当前系统为小端序，则转换字节序
+            byte[] bytes = BitConverter.GetBytes(isBigEndian ? (uint)IPAddress.HostToNetworkOrder((int)value) : value);
+            return bytes;
+        }
+
+        // 大端字节数组 → 小端Ushort
+        public static ushort ReadBigUshort(byte[] bigEndianBytes)
+        {
+            // 直接转换为小端序（若输入为大端序）
+            return (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(bigEndianBytes, 0));
+        }
+
+        // 小端Ushort → 大端字节数组
+        public static byte[] ToBigEndianBytes(ushort value)
+        {
+            // 强制转换为大端序
+            return BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)value));
+        }
+
+        /// <summary>
+        /// int[] 按位，转为byte[]。
+        /// 如[0,0,0,0,0,1,0,0] => [4]
+        /// </summary>
+        public static byte[] IntArrayToByteArray(ushort[] array)
+        {
+            int byteLength = (array.Length + 7) / 8; // 计算需要的字节数
+            int[] intArray = new int[byteLength];
+            byte[] byteArray = new byte[byteLength];
+            for (int i = 0; i < array.Length; i++)
+            {
+                if (array[i] != 0)
+                {
+                    int byteIndex = i / 8; // 当前位所属的字节索引
+                    int bitPos = i % 8; // 修改：低位在前（左侧补零时从右向左填充）
+                    intArray[byteIndex] |= (1 << bitPos); // 设置对应位为1
+                }
+            }
+
+            for (int i = 0; i < intArray.Length; i++)
+            {
+                byteArray[i] = (byte)intArray[i];
+            }
+
+            return byteArray;
+        }
+        
+        /// <summary>
+        /// CRC16
+        /// </summary>
+        /// <param name="data">数据字节数组</param>
+        /// <param name="length">计算数据长度</param>
+        /// <returns>crc16值</returns>
+        public static ushort CRC16(byte[] data, int length)
+        {
+	        ushort crc = 0xFFFF; // 初始值
+	        for (int i = 0; i < length; i++)
+	        {
+		        crc ^= data[i]; // 逐字节异或
+		        for (int j = 0; j < 8; j++)
+		        {
+			        if ((crc & 0x0001) != 0) // 检查最低位是否为1
+			        {
+				        crc = (ushort)((crc >> 1) ^ 0xA001); // 右移并异或多项式
+			        }
+			        else
+			        {
+				        crc >>= 1; // 直接右移
+			        }
+		        }
+	        }
+
+	        return crc;
+        }
 	}
 }

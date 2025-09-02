@@ -11,7 +11,7 @@ namespace UNetwork
 
         private readonly byte[] opcodeBytes = new byte[2];
 
-        public INetworkManager Manager { get;private set; }
+        public INetworkComponent Component { get;private set; }
 
         public int Error
         {
@@ -30,9 +30,9 @@ namespace UNetwork
 
         private void OnConnect(AChannel channel, int code)
         {
-            if (Manager.OnConnect != null)
+            if (Component.OnConnect != null)
             {
-                Manager.OnConnect.Invoke(code);
+                Component.OnConnect.Invoke(code);
             }
 
             Debug.Log("OnConnect");
@@ -40,9 +40,9 @@ namespace UNetwork
 
         private void OnError(AChannel channel, int code)
         {
-            if (Manager.OnError != null)
+            if (Component.OnError != null)
             {
-                Manager.OnError.Invoke(code);
+                Component.OnError.Invoke(code);
             }
 
             Debug.LogError("OnError:" + code);
@@ -60,10 +60,10 @@ namespace UNetwork
             this.channel.Dispose();
         }
 
-        public void Start(INetworkManager manager)
+        public void Start(INetworkComponent component)
         {
             this.channel.Start();
-            this.Manager = manager;
+            this.Component = component;
         }
 
         public IPEndPoint RemoteAddress
@@ -88,7 +88,7 @@ namespace UNetwork
             memoryStream.Read(bytes, 0, bytes.Length);
             
             // Manager.MessageDispatcher.Dispatch(this, memoryStream.GetBuffer());
-            Manager.OnMessage?.Invoke(bytes);
+            Component.OnMessage?.Invoke(bytes);
         }
 
         public void OnRead(MemoryStream memoryStream)
@@ -121,6 +121,7 @@ namespace UNetwork
             stream.Seek(0, SeekOrigin.Begin);
             stream.SetLength(buffers.Length);
 
+            // Debug.Log("PDC:"+BitConverter.ToString(buffers));
             Array.Copy(buffers, 0, stream.GetBuffer(), 0, buffers.Length);
             this.Send(stream);
         }
