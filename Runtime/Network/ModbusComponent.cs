@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using UnityEngine;
 using UnityEngine.Events;
@@ -12,6 +14,9 @@ namespace UNetwork
     /// </summary>
     public class ModbusComponent : ClientComponent
     {
+        public int DevID = 1;
+        public string DevName = "PLC#1";
+
         /// <summary>
         /// 是否自动读取线圈
         /// </summary>
@@ -32,19 +37,21 @@ namespace UNetwork
         /// </summary>
         public int AutoReadRegisterFrequency = 1;
 
-        public UnityEvent<byte[]> OnReadCoil;
-        public UnityEvent<ushort[]> OnWriteCoil;
-        public UnityEvent<ushort[]> OnReadRegister;
-        public UnityEvent<ushort[]> OnWriteRegister;
-
+        public UnityEvent<int, int, byte[]> OnReadCoil;
+        public UnityEvent<int, ushort[]> OnWriteCoil;
+        public UnityEvent<int, int, ushort[]> OnReadRegister;
+        public UnityEvent<int, ushort[]> OnWriteRegister;
+        
         // 默认寄存器起始地址 (D3000)
         private const ushort REGISTER_ADDR = 0x0BB8;
 
         // 默认写线圈起始地址 (D24576)
-        private const ushort WRITE_COIL_ADDR = 0x6000;
+        private const ushort WRITE_COIL_ADDR1 = 0x6000;
+        private const ushort WRITE_COIL_ADDR2 = 0x6100;
 
         // 默认读线圈起始地址 (D20480)
-        private const ushort READ_COIL_ADDR = 0x5000;
+        private const ushort READ_COIL_ADDR1 = 0x5000;
+        private const ushort READ_COIL_ADDR2 = 0x5100;
 
         // 默认RTU透传，写入寄存器起始地址 (D4000)
         public const ushort WRITE_RTU_ADDR = 0x0FA0;
@@ -58,14 +65,30 @@ namespace UNetwork
         // 最大寄存器数量限制
         private const int MAX_REGISTER_COUNT = 16;
 
+        /// <summary>
+        /// 错误码
+        /// </summary>
+        public static readonly string[] ErrorCode = new string[]
+        {
+            "未知错误",
+            "非法的功能码",
+            "非法的数据地址",
+            "非法的数据值",
+            "服务器故障",
+        };
+
+        // 发送时务
+        private Dictionary<int, ushort> Transitions;
+
         protected override void OnConnectMessage(int c)
         {
+            Transitions = new Dictionary<int, ushort>();
             Debug.Log("连接成功");
             StopAllCoroutines();
-        
+
             if (AutoReadCoil)
                 StartCoroutine(CoReadCoil());
-        
+
             if (AutoReadRegister)
                 StartCoroutine(CoReadRegisters());
         }
@@ -84,7 +107,7 @@ namespace UNetwork
             while (true)
             {
                 yield return new WaitForSeconds(1f / AutoReadRegisterFrequency);
-                ReadMultipleRegisters(8);
+                ReadMultipleRegisters(7);
             }
         }
 
@@ -178,11 +201,11 @@ namespace UNetwork
                 }
 
                 // Debug.Log(string.Join(" ", bytes));
-                Send(bytes);
+                Send(startAddr, bytes);
             }
             catch (Exception ex)
             {
-                Debug.LogError($"写入寄存器时发生错误: {ex.Message}");
+                Debug.LogError($"写入RTU寄存器时发生错误: {ex.Message}");
             }
         }
 
@@ -241,7 +264,7 @@ namespace UNetwork
                     Buffer.BlockCopy(registerBytes, 0, bytes, 7 + i * 2, 2);
                 }
 
-                Send(bytes);
+                Send(startAddr, bytes);
             }
             catch (Exception ex)
             {
@@ -279,7 +302,7 @@ namespace UNetwork
                 // 写入寄存器数量（大端序）：将ushort转换为大端字节数组并复制到发送缓冲区
                 Buffer.BlockCopy(length.ToBigBytes(true), 0, bytes, 4, 2);
 
-                Send(bytes);
+                Send(startAddr, bytes);
             }
             catch (Exception ex)
             {
@@ -293,8 +316,19 @@ namespace UNetwork
         /// <param name="array">要写入的线圈值数组（0或1）</param>
         public void WriteMultipleCoil(ushort[] array)
         {
-            // 使用默认写线圈地址
-            WriteMultipleCoil(WRITE_COIL_ADDR, array);
+            if (array.Length <= 14)
+            {
+                // 使用默认写线圈地址
+                WriteMultipleCoil(WRITE_COIL_ADDR1, array);
+            }
+            else
+            {
+                // 使用默认写线圈地址
+                var array1 = array.Take(14).ToArray();
+                WriteMultipleCoil(WRITE_COIL_ADDR1, array1);
+                var array2 = array.Skip(14).Take(array.Length - 14).ToArray();
+                WriteMultipleCoil(WRITE_COIL_ADDR2, array2);
+            }
         }
 
         /// <summary>
@@ -333,7 +367,7 @@ namespace UNetwork
                 // 将线圈数据复制到发送缓冲区
                 Buffer.BlockCopy(byteArray, 0, bytes, 7, byteArray.Length);
 
-                Send(bytes);
+                Send(startAddr, bytes);
             }
             catch (Exception ex)
             {
@@ -348,7 +382,15 @@ namespace UNetwork
         public void ReadMultipleCoil(ushort coilCount)
         {
             // 调用带起始地址的重载方法，使用默认读线圈地址
-            ReadMultipleCoil(READ_COIL_ADDR, coilCount);
+            if (coilCount <= 16)
+            {
+                ReadMultipleCoil(READ_COIL_ADDR1, coilCount);
+            }
+            else
+            {
+                ReadMultipleCoil(READ_COIL_ADDR1, 16);
+                ReadMultipleCoil(READ_COIL_ADDR2, (ushort)(coilCount - 16));
+            }
         }
 
         /// <summary>
@@ -371,12 +413,18 @@ namespace UNetwork
                 // 写入线圈数量（大端序）：将ushort转换为大端字节数组并复制到发送缓冲区
                 Buffer.BlockCopy(coilCount.ToBigBytes(true), 0, bytes, 4, 2);
 
-                Send(bytes);
+                Send(startAddr, bytes);
             }
             catch (Exception ex)
             {
                 Debug.LogError($"读取多个线圈时发生错误: {ex.Message}");
             }
+        }
+
+        public void Send(ushort startAdd, byte[] data)
+        {
+            Send(data);
+            Transitions.Add(ModbusHeader.transactionId, startAdd);
         }
 
         /// <summary>
@@ -388,6 +436,9 @@ namespace UNetwork
         {
             // 创建ByteBuffer用于解析接收到的数据
             ByteBuffer buffer = new ByteBuffer(bytes);
+
+            // 读取事务ID
+            var transitionId = buffer.ReadShort();
             // 读取单元ID（设备地址）
             var unit = buffer.ReadByte();
             // 读取功能码
@@ -397,6 +448,7 @@ namespace UNetwork
             switch (cmd)
             {
                 case PDUCode.READ_COIL_STATUS: //读线圈响应
+                case PDUCode.READ_INPUT_STATUS: //读离散线圈响应
                 {
                     // 读取返回的字节数
                     var count = buffer.ReadByte();
@@ -417,11 +469,12 @@ namespace UNetwork
                     }
 
                     // 输出解析后的线圈状态到日志
-                    Debug.LogWarning("Read Coil:" + string.Join("-", result));
-                    OnReadCoil?.Invoke(result);
+                    Log("Read Coil:" + string.Join("-", result));
+                    OnReadCoil?.Invoke(DevID, transitionId, result);
                 }
                     break;
-                case PDUCode.READ_HOLDING_REGISTER: //读寄存器响应
+                case PDUCode.READ_INPUT_REGISTER: //读输入寄存器响应
+                case PDUCode.READ_HOLDING_REGISTER: //读保持寄存器响应
                 {
                     // 读取返回的字节数
                     var count = buffer.ReadByte();
@@ -438,10 +491,11 @@ namespace UNetwork
                     }
 
                     // 输出解析后的寄存器值到日志
-                    Debug.LogWarning("Read Register:" + string.Join("-", result));
-                    OnReadRegister?.Invoke(result);
+                    Log("Read Register:" + string.Join("-", result));
+                    OnReadRegister?.Invoke(DevID, transitionId, result);
                 }
                     break;
+                case PDUCode.WRITE_SINGLE_COIL: //写单个线圈响应
                 case PDUCode.WRITE_MULTIPLE_COIL: //写多个线圈响应
                 {
                     // 读取返回的数据
@@ -457,10 +511,11 @@ namespace UNetwork
                     }
 
                     // 输出写入成功的消息到日志
-                    Debug.Log($"Write Coil:" + string.Join("-", result));
-                    OnWriteCoil?.Invoke(result);
+                    Log($"Write Coil:" + string.Join("-", result));
+                    OnWriteCoil?.Invoke(DevID, result);
                 }
                     break;
+                case PDUCode.WRITE_SINGLE_REGISTER: //写单个寄存器响应
                 case PDUCode.WRITE_MULTIPLE_REGISTER: //写多个寄存器响应
                 {
                     // 读取返回的数据
@@ -476,11 +531,27 @@ namespace UNetwork
                     }
 
                     // 输出写入成功的消息到日志
-                    Debug.Log($"Write Register:" + string.Join("-", result));
-                    OnWriteRegister?.Invoke(result);
+                    Log($"Write Register:" + string.Join("-", result));
+                    OnWriteRegister?.Invoke(DevID, result);
                 }
                     break;
+                default:
+                {
+                    var symbol = buffer.ReadByte(); //串行链路或其它总线上连接的远程从站的识别码
+                    var code = buffer.ReadByte(); //错误命令码
+                    var error = buffer.ReadByte(); //错误码
+                    Debug.LogError($"Modbus Error:{symbol} {code} {error} {ErrorCode[error]}");
+                }
+                    
+                    break;
             }
+        }
+
+        void Log(string message)
+        {
+#if LOG
+            Debug.Log(message);
+#endif
         }
     }
 }

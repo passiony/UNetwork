@@ -5,9 +5,9 @@ namespace UNetwork
     public class ModbusHeader
     {
         // MBAP报文头 : [事务元标识符+协议标识符+PDU长度+单元标识符] 7字节
-        ushort transactionId = 0x0001; // 事务ID：0x0001 → [0x00, 0x01]
-        ushort protocolId = 0x0000; // 协议ID：0x0000 → [0x00, 0x00]
-        byte unitId = 0101; // 单元标识符：从站地址 → [0x06]
+        public static ushort transactionId = 0x0001; // 事务ID：0x0001 → [0x00, 0x01]
+        public static ushort protocolId = 0x0000; // 协议ID：0x0000 → [0x00, 0x00]
+        public static byte unitId = 0101; // 单元标识符：从站地址 → [0x06]
 
         private readonly byte[] protocalHeader;
 
@@ -25,11 +25,11 @@ namespace UNetwork
         {
             transactionId++;
             if (transactionId > 5000) transactionId = 1;
-            
-            Array.Copy(transactionId.ToBigBytes(true),0,protocalHeader,0,2);
-            Array.Copy(protocolId.ToBigBytes(true),0,protocalHeader,2,2);
-            Array.Copy(length.ToBigBytes(true),0,protocalHeader,4,2);
-            
+
+            Array.Copy(transactionId.ToBigBytes(true), 0, protocalHeader, 0, 2);
+            Array.Copy(protocolId.ToBigBytes(true), 0, protocalHeader, 2, 2);
+            Array.Copy(length.ToBigBytes(true), 0, protocalHeader, 4, 2);
+
             return protocalHeader;
         }
     }
