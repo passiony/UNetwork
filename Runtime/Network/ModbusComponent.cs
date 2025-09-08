@@ -107,7 +107,7 @@ namespace UNetwork
             while (true)
             {
                 yield return new WaitForSeconds(1f / AutoReadRegisterFrequency);
-                ReadMultipleRegisters(7);
+                ReadMultipleRegisters(8);
             }
         }
 
