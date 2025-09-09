@@ -9,7 +9,7 @@ namespace UNetwork
     /// <summary>
     /// 封装Socket,将回调push到主线程处理
     /// </summary>
-    public sealed class ModbusChannel : AChannel
+    public sealed class ModbusTCPChannel : AChannel
     {
         private Socket socket;
         private SocketAsyncEventArgs innArgs = new SocketAsyncEventArgs();
@@ -24,20 +24,20 @@ namespace UNetwork
 
         private bool isConnected;
 
-        private readonly ModbusParser parser;
+        private readonly ModbusTCPParser parser;
 
         private const int HeadSize = 6;
 
         private ModbusHeader m_ModbusHeader;
 
-        public ModbusChannel(IPEndPoint ipEndPoint, ModbusService service) : base(service, ChannelType.Connect)
+        public ModbusTCPChannel(IPEndPoint ipEndPoint, ModbusTCPService tcpService) : base(tcpService, ChannelType.Connect)
         {
             this.m_ModbusHeader = new ModbusHeader(HeadSize);
-            this.memoryStream = service.MemoryStreamManager.GetStream("message", ushort.MaxValue);
+            this.memoryStream = tcpService.MemoryStreamManager.GetStream("message", ushort.MaxValue);
 
             this.socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             this.socket.NoDelay = true;
-            this.parser = new ModbusParser(HeadSize, this.recvBuffer, this.memoryStream);
+            this.parser = new ModbusTCPParser(HeadSize, this.recvBuffer, this.memoryStream);
             this.innArgs.Completed += this.OnComplete;
             this.outArgs.Completed += this.OnComplete;
 
@@ -60,7 +60,7 @@ namespace UNetwork
 
         private TService GetService()
         {
-            return (TService)this.Service;
+            return (TService)this.TcpService;
         }
 
         public override void Start()

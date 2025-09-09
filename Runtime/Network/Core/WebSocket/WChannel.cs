@@ -69,7 +69,7 @@ namespace UNetwork
 
         private WService GetService()
         {
-            return (WService) this.Service;
+            return (WService) this.TcpService;
         }
 
         public async void ConnectAsync(string url)

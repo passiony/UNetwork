@@ -9,10 +9,10 @@ using UnityEngine.Events;
 namespace UNetwork
 {
     /// <summary>
-    /// Modbus通信组件类，继承自ClientComponent，用于实现Modbus协议的客户端通信功能
+    /// Modbus TCP通信组件类，继承自ClientComponent，用于实现Modbus协议的客户端通信功能
     /// 支持读写寄存器和线圈操作
     /// </summary>
-    public class ModbusComponent : ClientComponent
+    public class ModbusTCPComponent : ClientComponent
     {
         public int DevID = 1;
         public string DevName = "PLC#1";
@@ -41,7 +41,7 @@ namespace UNetwork
         public UnityEvent<int, ushort[]> OnWriteCoil;
         public UnityEvent<int, int, ushort[]> OnReadRegister;
         public UnityEvent<int, ushort[]> OnWriteRegister;
-        
+
         // 默认寄存器起始地址 (D3000)
         private const ushort REGISTER_ADDR = 0x0BB8;
 
@@ -60,10 +60,10 @@ namespace UNetwork
         public const ushort READE_RTU_ADDR = 0x10CC;
 
         // 最大线圈数量限制
-        private const int MAX_COIL_COUNT = 16;
+        public ushort READ_COIL_COUNT = 16;
 
         // 最大寄存器数量限制
-        private const int MAX_REGISTER_COUNT = 16;
+        public ushort READ_REGISTER_COUNT = 16;
 
         /// <summary>
         /// 错误码
@@ -77,8 +77,13 @@ namespace UNetwork
             "服务器故障",
         };
 
+        public bool CustomRegister;
+        public ushort CustomStartAddr = 0x06;
+        public ushort CustomLength = 2;
+
         // 发送时务
         private Dictionary<int, ushort> Transitions;
+        private byte[] CoilsData;
 
         protected override void OnConnectMessage(int c)
         {
@@ -87,18 +92,29 @@ namespace UNetwork
             StopAllCoroutines();
 
             if (AutoReadCoil)
-                StartCoroutine(CoReadCoil());
+                StartCoroutine(CoReadCoil(READ_COIL_COUNT));
 
             if (AutoReadRegister)
                 StartCoroutine(CoReadRegisters());
         }
 
-        IEnumerator CoReadCoil()
+        IEnumerator CoReadCoil(ushort coilCount)
         {
+            CoilsData = new byte[coilCount];
             while (true)
             {
                 yield return new WaitForSeconds(1f / AutoReadCoilFrequency);
-                ReadMultipleCoil(16);
+                // 调用带起始地址的重载方法，使用默认读线圈地址
+                if (coilCount <= 16)
+                {
+                    ReadMultipleCoil(READ_COIL_ADDR1, coilCount);
+                }
+                else
+                {
+                    ReadMultipleCoil(READ_COIL_ADDR1, 16);
+                    yield return new WaitForSeconds(1f / AutoReadCoilFrequency);
+                    ReadMultipleCoil(READ_COIL_ADDR2, (ushort)(coilCount - 16));
+                }
             }
         }
 
@@ -107,7 +123,14 @@ namespace UNetwork
             while (true)
             {
                 yield return new WaitForSeconds(1f / AutoReadRegisterFrequency);
-                ReadMultipleRegisters(8);
+                if (CustomRegister)
+                {
+                    ReadMultipleRegisters(READ_REGISTER_COUNT);
+                }
+                else
+                {
+                    ReadMultipleRegisters(CustomStartAddr, CustomLength);
+                }
             }
         }
 
@@ -171,7 +194,7 @@ namespace UNetwork
                 if (array == null || array.Length == 0)
                     throw new ArgumentException("寄存器数组不能为空");
                 // 参数校验：检查数组长度是否超出最大限制
-                if (array.Length > MAX_REGISTER_COUNT)
+                if (array.Length > READ_REGISTER_COUNT)
                     throw new ArgumentException("寄存器数组长度超出限制");
 
                 // 获取要写入的寄存器数量
@@ -232,7 +255,7 @@ namespace UNetwork
                 if (array == null || array.Length == 0)
                     throw new ArgumentException("寄存器数组不能为空");
                 // 参数校验：检查数组长度是否超出最大限制
-                if (array.Length > MAX_REGISTER_COUNT)
+                if (array.Length > READ_REGISTER_COUNT)
                     throw new ArgumentException("寄存器数组长度超出限制");
 
                 // 获取要写入的寄存器数量
@@ -344,7 +367,7 @@ namespace UNetwork
                 if (array == null || array.Length == 0)
                     throw new ArgumentException("线圈数组不能为空");
                 // 参数校验：检查数组长度是否超出最大限制
-                if (array.Length > MAX_COIL_COUNT)
+                if (array.Length > READ_COIL_COUNT)
                     throw new ArgumentException("线圈数组长度超出限制");
 
                 // 获取要写入的线圈数量
@@ -443,7 +466,6 @@ namespace UNetwork
             var unit = buffer.ReadByte();
             // 读取功能码
             var cmd = buffer.ReadByte();
-
             // 根据功能码进行不同的处理
             switch (cmd)
             {
@@ -470,7 +492,17 @@ namespace UNetwork
 
                     // 输出解析后的线圈状态到日志
                     Log("Read Coil:" + string.Join("-", result));
-                    OnReadCoil?.Invoke(DevID, transitionId, result);
+
+                    if (Transitions.TryGetValue(transitionId, out ushort startAddr))
+                    {
+                        if (startAddr == READ_COIL_ADDR1)
+                            Buffer.BlockCopy(result, 0, CoilsData, 0, result.Length);
+
+                        if (startAddr == READ_COIL_ADDR2)
+                            Buffer.BlockCopy(result, 0, CoilsData, 16, result.Length);
+
+                        OnReadCoil?.Invoke(DevID, startAddr, CoilsData);
+                    }
                 }
                     break;
                 case PDUCode.READ_INPUT_REGISTER: //读输入寄存器响应
@@ -512,6 +544,7 @@ namespace UNetwork
 
                     // 输出写入成功的消息到日志
                     Log($"Write Coil:" + string.Join("-", result));
+
                     OnWriteCoil?.Invoke(DevID, result);
                 }
                     break;
@@ -542,7 +575,7 @@ namespace UNetwork
                     var error = buffer.ReadByte(); //错误码
                     Debug.LogError($"Modbus Error:{symbol} {code} {error} {ErrorCode[error]}");
                 }
-                    
+
                     break;
             }
         }

@@ -3,7 +3,7 @@ using System.IO;
 
 namespace UNetwork
 {
-    public class ModbusParser
+    public class ModbusRTUParser
     {
         private readonly CircularBuffer buffer;
         private ushort transactionId; // 事务ID
@@ -14,9 +14,8 @@ namespace UNetwork
         public MemoryStream memoryStream;
         private bool isOK;
         private readonly int packetSizeLength;
-        private byte[] tempBytes = new byte[2];
 
-        public ModbusParser(int packetSizeLength, CircularBuffer buffer, MemoryStream memoryStream)
+        public ModbusRTUParser(int packetSizeLength, CircularBuffer buffer, MemoryStream memoryStream)
         {
             this.packetSizeLength = packetSizeLength;
             this.buffer = buffer;
@@ -42,18 +41,7 @@ namespace UNetwork
                         }
                         else
                         {
-                            this.buffer.Read(tempBytes, 0, 2);
-                            this.transactionId = ByteHelper.ReadBigUshort(this.tempBytes);
-                            this.buffer.Read(tempBytes, 0, 2);
-                            this.protocolId = ByteHelper.ReadBigUshort(this.tempBytes);
-                            this.buffer.Read(tempBytes, 0, 2);
-                            this.packetSize = ByteHelper.ReadBigUshort(this.tempBytes);
-
-                            if (this.packetSize > ushort.MaxValue || this.packetSize < Packet.MinPacketSize)
-                            {
-                                throw new Exception($"recv packet size error:, 可能是外网探测端口: {this.packetSize}");
-                            }
-
+                            packetSize = (ushort)packetSizeLength;
                             this.state = ParserState.PacketBody;
                         }
 
@@ -66,11 +54,9 @@ namespace UNetwork
                         else
                         {
                             this.memoryStream.Seek(0, SeekOrigin.Begin);
-                            this.memoryStream.SetLength(this.packetSize + 2);
+                            this.memoryStream.SetLength(this.packetSize);
                             byte[] bytes = this.memoryStream.GetBuffer();
-                            byte[] transition = BitConverter.GetBytes(transactionId);
-                            Buffer.BlockCopy(transition, 0, bytes, 0, 2);
-                            this.buffer.Read(bytes, 2, this.packetSize);
+                            this.buffer.Read(bytes, 0, this.packetSize);
                             this.isOK = true;
                             this.state = ParserState.PacketSize;
                             finish = true;

@@ -48,8 +48,11 @@ namespace UNetwork
                 case NetworkProtocol.TCP:
                     this.Service = new TService(packetSize) { };
                     break;
-                case NetworkProtocol.Modbus:
-                    this.Service = new ModbusService() { };
+                case NetworkProtocol.ModbusTCP:
+                    this.Service = new ModbusTCPService() { };    
+                    break;
+                case NetworkProtocol.ModbusRTU:
+                    this.Service = new ModbusRTUService() { };
                     break;
                 case NetworkProtocol.WebSocket:
                     this.Service = new WService() { };

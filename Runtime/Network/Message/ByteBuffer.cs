@@ -126,6 +126,10 @@ public class ByteBuffer
         return Encoding.UTF8.GetString(buffer);
     }
 
+    public byte[] ReadBytes(int length)
+    {
+        return reader.ReadBytes(length);
+    }
     public byte[] ReadBytes()
     {
         int len = (int)(stream.Length - stream.Position);

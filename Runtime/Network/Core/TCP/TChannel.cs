@@ -61,7 +61,7 @@ namespace UNetwork
 		
 		private TService GetService()
 		{
-			return (TService)this.Service;
+			return (TService)this.TcpService;
 		}
 
 		public override void Start()

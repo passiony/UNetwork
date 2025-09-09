@@ -437,7 +437,7 @@ namespace UNetwork
 
 		private KService GetService()
 		{
-			return (KService)this.Service;
+			return (KService)this.TcpService;
 		}
 
 		public void HandleConnnect(uint remoteConn)

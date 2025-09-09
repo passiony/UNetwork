@@ -9,13 +9,13 @@ namespace UNetwork
 	/// <summary>
 	/// ModbusService的一个封装管理
 	/// </summary>
-	public sealed class ModbusService : AService
+	public sealed class ModbusRTUService : AService
 	{
-		private ModbusChannel channel;
+		private ModbusRTUChannel channel;
 
 		public RecyclableMemoryStreamManager MemoryStreamManager = new RecyclableMemoryStreamManager();
 		
-		public ModbusService()
+		public ModbusRTUService()
 		{
 		}
 		
@@ -31,7 +31,7 @@ namespace UNetwork
 
 		public override AChannel ConnectChannel(IPEndPoint ipEndPoint)
 		{
-			channel = new ModbusChannel(ipEndPoint, this);
+			channel = new ModbusRTUChannel(ipEndPoint, this);
 			return channel;
 		}
 
