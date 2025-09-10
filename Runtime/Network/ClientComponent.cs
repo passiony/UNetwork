@@ -18,7 +18,8 @@ namespace UNetwork
 
         public IMessagePacker MessagePacker { get; set; }
         public IMessageDispatcher MessageDispatcher { get; set; }
-
+        public bool IsConnecting => Service.GetChannel().IsConnected;
+        
         public Action<int> OnConnect { get; set; }
         public Action<int> OnError { get; set; }
         public Action<byte[]> OnMessage { get; set; }
@@ -71,7 +72,7 @@ namespace UNetwork
         
         public virtual void Send(byte[] data)
         {
-            Session.Send(data);
+            Session?.Send(data);
         }
         
         protected virtual void Update()
@@ -103,7 +104,7 @@ namespace UNetwork
 
         protected virtual void OnDestroy()
         {
-            Session.Dispose();
+            Session?.Dispose();
         }
     }
 }

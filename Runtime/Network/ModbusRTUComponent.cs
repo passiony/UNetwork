@@ -14,7 +14,7 @@ namespace UNetwork
     {
         public int DevID = 1;
         public string DevName = "PLC#1";
-
+        
         /// <summary>
         /// 是否自动读取寄存器
         /// </summary>

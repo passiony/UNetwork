@@ -22,8 +22,6 @@ namespace UNetwork
 
 		private bool isRecving;
 
-		private bool isConnected;
-
 		private readonly PacketParser parser;
 
 		private readonly byte[] packetSizeCache;
@@ -159,6 +157,7 @@ namespace UNetwork
 
 		private void OnDisconnectComplete(object o)
 		{
+			this.isConnected = false;
 			SocketAsyncEventArgs e = (SocketAsyncEventArgs)o;
 			this.OnError((int)e.SocketError);
 		}

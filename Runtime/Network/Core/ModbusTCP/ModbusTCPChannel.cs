@@ -22,8 +22,6 @@ namespace UNetwork
 
         private bool isRecving;
 
-        private bool isConnected;
-
         private readonly ModbusTCPParser parser;
 
         private const int HeadSize = 6;
@@ -147,6 +145,7 @@ namespace UNetwork
 
         private void OnDisconnectComplete(object o)
         {
+            this.isConnected = false;
             SocketAsyncEventArgs e = (SocketAsyncEventArgs)o;
             this.OnError((int)e.SocketError);
         }

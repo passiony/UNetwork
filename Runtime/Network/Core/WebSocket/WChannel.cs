@@ -17,8 +17,6 @@ namespace UNetwork
 
         private bool isSending;
 
-        private bool isConnected;
-
         private readonly MemoryStream recvStream;
 
         private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
@@ -51,8 +49,8 @@ namespace UNetwork
             this.cancellationTokenSource.Dispose();
             this.cancellationTokenSource = null;
 
+            this.isConnected = true;
             this.webSocket.Dispose();
-
             this.memoryStream.Dispose();
         }
 

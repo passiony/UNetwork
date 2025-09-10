@@ -378,8 +378,6 @@ namespace UNetwork
 
 		private readonly Queue<WaitSendBuffer> sendBuffer = new Queue<WaitSendBuffer>();
 
-		private bool isConnected;
-		
 		private readonly IPEndPoint remoteEndPoint;
 
 		private uint lastRecvTime;
@@ -432,6 +430,7 @@ namespace UNetwork
 
 		public void Disconnect(int error)
 		{
+			this.isConnected = false;
 			this.OnError(error);
 		}
 

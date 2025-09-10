@@ -90,7 +90,7 @@ namespace UNetwork
             Transitions = new Dictionary<int, ushort>();
             Debug.Log("连接成功");
             StopAllCoroutines();
-
+            
             if (AutoReadCoil)
                 StartCoroutine(CoReadCoil(READ_COIL_COUNT));
 

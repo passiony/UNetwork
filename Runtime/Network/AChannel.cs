@@ -20,6 +20,9 @@ namespace UNetwork
         protected MemoryStream memoryStream;
         public MemoryStream Stream => this.memoryStream;
 
+        protected bool isConnected;
+        public bool IsConnected => isConnected;
+
         public int Error { get; set; }
 
         public IPEndPoint RemoteAddress { get; protected set; }
