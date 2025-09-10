@@ -105,6 +105,12 @@ namespace UNetwork
             return bytes;
         }
 
+		public static byte[] ToBytes(this ushort value)
+		{
+			// 当前系统为小端序
+			byte[] bytes = BitConverter.GetBytes(value);
+			return bytes;
+		}
         /// <summary>
         /// 将 int 转换为字节数组，大端
         /// </summary>

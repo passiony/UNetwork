@@ -71,7 +71,7 @@ namespace UNetwork
                 Buffer.BlockCopy(length.ToBigBytes(true), 0, bytes, 4, 2);
                 // CRC校验
                 var crc = ByteHelper.CRC16(bytes, 6);
-                Buffer.BlockCopy(crc.ToBigBytes(true), 0, bytes, 6, 2);
+                Buffer.BlockCopy(crc.ToBytes(), 0, bytes, 6, 2);
 
                 // Debug.Log(string.Join(" ", bytes));
                 Send(bytes);
