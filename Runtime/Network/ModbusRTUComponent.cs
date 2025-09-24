@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Net;
 using UnityEngine;
 using UnityEngine.Events;
@@ -14,7 +15,7 @@ namespace UNetwork
     {
         public int DevID = 1;
         public string DevName = "PLC#1";
-        
+
         /// <summary>
         /// 是否自动读取寄存器
         /// </summary>
@@ -48,6 +49,11 @@ namespace UNetwork
             }
         }
 
+        protected override void Update()
+        {
+            base.Update();
+            
+        }
 
         /// <summary>
         /// 发送RTU读取命令
@@ -70,7 +76,7 @@ namespace UNetwork
                 // 写入寄存器数量（大端序）：将ushort转换为大端字节数组并复制到发送缓冲区
                 Buffer.BlockCopy(length.ToBigBytes(true), 0, bytes, 4, 2);
                 // CRC校验
-                var crc = ByteHelper.CRC16(bytes, 6);
+                var crc = ByteHelper.CRC16(bytes, 0, 6);
                 Buffer.BlockCopy(crc.ToBytes(), 0, bytes, 6, 2);
 
                 // Debug.Log(string.Join(" ", bytes));
@@ -113,7 +119,7 @@ namespace UNetwork
                     }
 
                     var rcvCrc = buffer.ReadShort();
-                    var lacCrc = ByteHelper.CRC16(bytes, 7);
+                    var lacCrc = ByteHelper.CRC16(bytes, 0, 7);
                     if (rcvCrc == lacCrc)
                     {
                         // 输出解析后的线圈状态到日志

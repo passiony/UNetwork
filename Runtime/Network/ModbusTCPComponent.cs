@@ -175,8 +175,8 @@ namespace UNetwork
             // 写入寄存器数量（大端序）：将ushort转换为大端字节数组并复制到发送缓冲区
             Buffer.BlockCopy(length.ToBigBytes(true), 0, bytes, 5, 2);
             // CRC校验
-            var crc = ByteHelper.CRC16(bytes, 6);
-            Buffer.BlockCopy(crc.ToBigBytes(true), 0, bytes, 7, 2);
+            var crc = ByteHelper.CRC16(bytes,1, 6);
+            Buffer.BlockCopy(crc.ToBytes(), 0, bytes, 7, 2);
 
             return bytes;
         }

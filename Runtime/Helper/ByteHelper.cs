@@ -4,97 +4,100 @@ using System.Text;
 
 namespace UNetwork
 {
-	public static class ByteHelper
-	{
-		public static string ToHex(this byte b)
-		{
-			return b.ToString("X2");
-		}
+    public static class ByteHelper
+    {
+        public static string ToHex(this byte b)
+        {
+            return b.ToString("X2");
+        }
 
-		public static string ToHex(this byte[] bytes)
-		{
-			StringBuilder stringBuilder = new StringBuilder();
-			foreach (byte b in bytes)
-			{
-				stringBuilder.Append(b.ToString("X2"));
-			}
-			return stringBuilder.ToString();
-		}
+        public static string ToHex(this byte[] bytes)
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+            foreach (byte b in bytes)
+            {
+                stringBuilder.Append(b.ToString("X2"));
+            }
 
-		public static string ToHex(this byte[] bytes, string format)
-		{
-			StringBuilder stringBuilder = new StringBuilder();
-			foreach (byte b in bytes)
-			{
-				stringBuilder.Append(b.ToString(format));
-			}
-			return stringBuilder.ToString();
-		}
+            return stringBuilder.ToString();
+        }
 
-		public static string ToHex(this byte[] bytes, int offset, int count)
-		{
-			StringBuilder stringBuilder = new StringBuilder();
-			for (int i = offset; i < offset + count; ++i)
-			{
-				stringBuilder.Append(bytes[i].ToString("X2"));
-			}
-			return stringBuilder.ToString();
-		}
+        public static string ToHex(this byte[] bytes, string format)
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+            foreach (byte b in bytes)
+            {
+                stringBuilder.Append(b.ToString(format));
+            }
 
-		public static string ToStr(this byte[] bytes)
-		{
-			return Encoding.Default.GetString(bytes);
-		}
+            return stringBuilder.ToString();
+        }
 
-		public static string ToStr(this byte[] bytes, int index, int count)
-		{
-			return Encoding.Default.GetString(bytes, index, count);
-		}
+        public static string ToHex(this byte[] bytes, int offset, int count)
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+            for (int i = offset; i < offset + count; ++i)
+            {
+                stringBuilder.Append(bytes[i].ToString("X2"));
+            }
 
-		public static string Utf8ToStr(this byte[] bytes)
-		{
-			return Encoding.UTF8.GetString(bytes);
-		}
+            return stringBuilder.ToString();
+        }
 
-		public static string Utf8ToStr(this byte[] bytes, int index, int count)
-		{
-			return Encoding.UTF8.GetString(bytes, index, count);
-		}
+        public static string ToStr(this byte[] bytes)
+        {
+            return Encoding.Default.GetString(bytes);
+        }
 
-		public static void WriteTo(this byte[] bytes, int offset, uint num)
-		{
-			bytes[offset] = (byte)(num & 0xff);
-			bytes[offset + 1] = (byte)((num & 0xff00) >> 8);
-			bytes[offset + 2] = (byte)((num & 0xff0000) >> 16);
-			bytes[offset + 3] = (byte)((num & 0xff000000) >> 24);
-		}
-		
-		public static void WriteTo(this byte[] bytes, int offset, int num)
-		{
-			bytes[offset] = (byte)(num & 0xff);
-			bytes[offset + 1] = (byte)((num & 0xff00) >> 8);
-			bytes[offset + 2] = (byte)((num & 0xff0000) >> 16);
-			bytes[offset + 3] = (byte)((num & 0xff000000) >> 24);
-		}
-		
-		public static void WriteTo(this byte[] bytes, int offset, byte num)
-		{
-			bytes[offset] = num;
-		}
-		
-		public static void WriteTo(this byte[] bytes, int offset, short num)
-		{
-			bytes[offset] = (byte)(num & 0xff);
-			bytes[offset + 1] = (byte)((num & 0xff00) >> 8);
-		}
-		
-		public static void WriteTo(this byte[] bytes, int offset, ushort num)
-		{
-			bytes[offset] = (byte)(num & 0xff);
-			bytes[offset + 1] = (byte)((num & 0xff00) >> 8);
-		}
-		
-		/// <summary>
+        public static string ToStr(this byte[] bytes, int index, int count)
+        {
+            return Encoding.Default.GetString(bytes, index, count);
+        }
+
+        public static string Utf8ToStr(this byte[] bytes)
+        {
+            return Encoding.UTF8.GetString(bytes);
+        }
+
+        public static string Utf8ToStr(this byte[] bytes, int index, int count)
+        {
+            return Encoding.UTF8.GetString(bytes, index, count);
+        }
+
+        public static void WriteTo(this byte[] bytes, int offset, uint num)
+        {
+            bytes[offset] = (byte)(num & 0xff);
+            bytes[offset + 1] = (byte)((num & 0xff00) >> 8);
+            bytes[offset + 2] = (byte)((num & 0xff0000) >> 16);
+            bytes[offset + 3] = (byte)((num & 0xff000000) >> 24);
+        }
+
+        public static void WriteTo(this byte[] bytes, int offset, int num)
+        {
+            bytes[offset] = (byte)(num & 0xff);
+            bytes[offset + 1] = (byte)((num & 0xff00) >> 8);
+            bytes[offset + 2] = (byte)((num & 0xff0000) >> 16);
+            bytes[offset + 3] = (byte)((num & 0xff000000) >> 24);
+        }
+
+        public static void WriteTo(this byte[] bytes, int offset, byte num)
+        {
+            bytes[offset] = num;
+        }
+
+        public static void WriteTo(this byte[] bytes, int offset, short num)
+        {
+            bytes[offset] = (byte)(num & 0xff);
+            bytes[offset + 1] = (byte)((num & 0xff00) >> 8);
+        }
+
+        public static void WriteTo(this byte[] bytes, int offset, ushort num)
+        {
+            bytes[offset] = (byte)(num & 0xff);
+            bytes[offset + 1] = (byte)((num & 0xff00) >> 8);
+        }
+
+        /// <summary>
         /// 将 ushort 转换为字节数组，大端
         /// </summary>
         public static byte[] ToBigBytes(this ushort value, bool isBigEndian)
@@ -105,12 +108,13 @@ namespace UNetwork
             return bytes;
         }
 
-		public static byte[] ToBytes(this ushort value)
-		{
-			// 当前系统为小端序
-			byte[] bytes = BitConverter.GetBytes(value);
-			return bytes;
-		}
+        public static byte[] ToBytes(this ushort value)
+        {
+            // 当前系统为小端序
+            byte[] bytes = BitConverter.GetBytes(value);
+            return bytes;
+        }
+
         /// <summary>
         /// 将 int 转换为字节数组，大端
         /// </summary>
@@ -164,33 +168,33 @@ namespace UNetwork
 
             return byteArray;
         }
-        
+
         /// <summary>
         /// CRC16
         /// </summary>
         /// <param name="data">数据字节数组</param>
         /// <param name="length">计算数据长度</param>
         /// <returns>crc16值</returns>
-        public static ushort CRC16(byte[] data, int length)
+        public static ushort CRC16(byte[] data, int start, int length)
         {
-	        ushort crc = 0xFFFF; // 初始值
-	        for (int i = 0; i < length; i++)
-	        {
-		        crc ^= data[i]; // 逐字节异或
-		        for (int j = 0; j < 8; j++)
-		        {
-			        if ((crc & 0x0001) != 0) // 检查最低位是否为1
-			        {
-				        crc = (ushort)((crc >> 1) ^ 0xA001); // 右移并异或多项式
-			        }
-			        else
-			        {
-				        crc >>= 1; // 直接右移
-			        }
-		        }
-	        }
+            ushort crc = 0xFFFF; // 初始值
+            for (int i = start; i < start + length; i++)
+            {
+                crc ^= data[i]; // 逐字节异或
+                for (int j = 0; j < 8; j++)
+                {
+                    if ((crc & 0x0001) != 0) // 检查最低位是否为1
+                    {
+                        crc = (ushort)((crc >> 1) ^ 0xA001); // 右移并异或多项式
+                    }
+                    else
+                    {
+                        crc >>= 1; // 直接右移
+                    }
+                }
+            }
 
-	        return crc;
+            return crc;
         }
-	}
+    }
 }
