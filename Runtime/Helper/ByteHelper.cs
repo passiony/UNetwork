@@ -196,5 +196,26 @@ namespace UNetwork
 
             return crc;
         }
+
+        public static ushort getCRC_MCRF4(byte[] s, int length)
+        {
+            int i, j;
+            ushort current_crc_value = 0xFFFF;
+            byte[] data = new byte[s.Length];
+            for (i = 0; i < length; i++)
+            {
+                data[i] = s[i];
+                current_crc_value ^= (data[i]);
+                for (j = 0; j < 8; j++)
+                {
+                    if ((current_crc_value & 0x01) != 0)
+                        current_crc_value = (ushort)((current_crc_value >> 1) ^ 0x8408);
+                    else
+                        current_crc_value = (ushort)(current_crc_value >> 1);
+                }
+            }
+
+            return current_crc_value;
+        }
     }
 }
