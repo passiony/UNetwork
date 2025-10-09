@@ -48,13 +48,7 @@ namespace UNetwork
                 ReadRTU(0x06, 2);
             }
         }
-
-        protected override void Update()
-        {
-            base.Update();
-            
-        }
-
+        
         /// <summary>
         /// 发送RTU读取命令
         /// </summary>
@@ -85,7 +79,6 @@ namespace UNetwork
             catch (Exception ex)
             {
                 Debug.LogError($"写入RTU时发生错误: {ex.Message}");
-                throw;
             }
         }
 

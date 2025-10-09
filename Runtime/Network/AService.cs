@@ -9,6 +9,7 @@ namespace UNetwork
 		TCP,
 		ModbusTCP,
 		ModbusRTU,
+		ModbusUHF,
 		WebSocket,
 	}
 

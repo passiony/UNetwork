@@ -54,6 +54,9 @@ namespace UNetwork
                     break;
                 case NetworkProtocol.ModbusRTU:
                     this.Service = new ModbusRTUService() { };
+                    break;     
+                case NetworkProtocol.ModbusUHF:
+                    this.Service = new ModbusUHFService() { };
                     break;
                 case NetworkProtocol.WebSocket:
                     this.Service = new WService() { };
