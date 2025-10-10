@@ -24,7 +24,7 @@ namespace UNetwork
 
         private readonly ModbusUHFParser parser;
 
-        private const int HeadSize = 6;
+        private const int HeadSize = 1;
 
         private UHFHeader m_ModbusHeader;
 

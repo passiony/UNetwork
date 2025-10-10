@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Net;
+using System.Text;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -13,55 +12,16 @@ namespace UNetwork
     public class ModbusUHFComponent : ClientComponent
     {
         public int DevID = 1;
-        public string DevName = "PLC#1";
+        public string DevName = "RFID#1";
 
-        /// <summary>
-        /// 是否自动读取寄存器
-        /// </summary>
-        public bool AutoReadRegister;
-
-        /// <summary>
-        /// 自动读取寄存器的频率
-        /// </summary>
-        public int AutoReadRegisterFrequency = 1;
-
-        public UnityEvent<int, int, ushort[]> OnReadRegister;
-        public UnityEvent<int, ushort[]> OnWriteRegister;
-
-        // 默认寄存器起始地址 (D3000)
-        private const byte REGISTER_ADDR = 0x00;
+        public UnityEvent<int, byte[]> OnReadRegister;
 
         // 最大寄存器数量限制
         public ushort READ_REGISTER_COUNT = 16;
 
-        /// <summary>
-        /// 错误码
-        /// </summary>
-        public static readonly string[] ErrorCode = new string[]
-        {
-            "未知错误",
-            "非法的功能码",
-            "非法的数据地址",
-            "非法的数据值",
-            "服务器故障",
-        };
-
         protected override void OnConnectMessage(int c)
         {
             Debug.Log("连接成功");
-            StopAllCoroutines();
-
-            if (AutoReadRegister)
-                StartCoroutine(CoReadRegisters());
-        }
-
-        IEnumerator CoReadRegisters()
-        {
-            while (true)
-            {
-                yield return new WaitForSeconds(1f / AutoReadRegisterFrequency);
-                ReadCommands(READ_REGISTER_COUNT);
-            }
         }
 
         /// <summary>
@@ -110,43 +70,6 @@ namespace UNetwork
             }
         }
 
-        /// <summary>
-        /// 读取多个寄存器的便捷方法，使用默认起始地址
-        /// </summary>
-        /// <param name="count">要读取的寄存器数量</param>
-        public void ReadCommands(ushort length)
-        {
-            // 使用默认寄存器地址
-            ReadCommands(REGISTER_ADDR, length);
-        }
-
-        /// <summary>
-        /// 读取多个寄存器的核心方法
-        /// </summary>
-        /// <param name="startAddr">起始寄存器地址（16进制）</param>
-        /// <param name="length">要读取的寄存器数量</param>
-        public void ReadCommands(ushort startAddr, ushort length)
-        {
-            try
-            {
-                // 创建用于发送的字节数组，读取请求固定为6字节
-                byte[] bytes = new byte[6];
-                // 写入单元ID（设备地址）
-                bytes.WriteTo(0, PDUCode.UnitID_READ_REGISTER);
-                // 写入功能码（读保持寄存器）
-                bytes.WriteTo(1, PDUCode.READ_HOLDING_REGISTER);
-                // 写入起始地址（大端序）：将ushort转换为大端字节数组并复制到发送缓冲区
-                Buffer.BlockCopy(startAddr.ToBigBytes(true), 0, bytes, 2, 2);
-                // 写入寄存器数量（大端序）：将ushort转换为大端字节数组并复制到发送缓冲区
-                Buffer.BlockCopy(length.ToBigBytes(true), 0, bytes, 4, 2);
-
-                Send(bytes);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"读取寄存器时发生错误: {ex.Message}");
-            }
-        }
 
         /// <summary>
         /// 处理接收到的消息数据
@@ -157,75 +80,33 @@ namespace UNetwork
         {
             // 创建ByteBuffer用于解析接收到的数据
             ByteBuffer buffer = new ByteBuffer(bytes);
-
-            // 读取事务ID
-            var transitionId = buffer.ReadShort();
-            // 读取单元ID（设备地址）
+            var length = buffer.ReadByte();
             var unit = buffer.ReadByte();
-            // 读取功能码
             var cmd = buffer.ReadByte();
+            var status = buffer.ReadByte();
             // 根据功能码进行不同的处理
             switch (cmd)
             {
-                case PDUCode.READ_INPUT_REGISTER: //读输入寄存器响应
-                case PDUCode.READ_HOLDING_REGISTER: //读保持寄存器响应
+                case 0xEE:
                 {
-                    // 读取返回的字节数
-                    var count = buffer.ReadByte();
-                    // 读取实际的寄存器数据
-                    var bits = buffer.ReadBytes();
-                    // 创建结果数组，每个寄存器占2个字节
-                    var result = new ushort[count / 2];
-
-                    // 解析寄存器数据
-                    for (int i = 0; i < result.Length; i++)
+                    var epcID = buffer.ReadBytes(length - 5);
+                    var rcvCrc = buffer.ReadShort();
+                    var lacCrc = ByteHelper.getCRC_MCRF4(bytes, 16);
+                    if (rcvCrc == lacCrc)
                     {
-                        // 将网络字节序转换为主机字节序，并存储到结果数组中
-                        result[i] = (ushort)IPAddress.NetworkToHostOrder((short)BitConverter.ToUInt16(bits, i * 2));
+                        OnReadRegister?.Invoke(DevID, epcID);
                     }
-
-                    // 输出解析后的寄存器值到日志
-                    Log("Read Register:" + string.Join("-", result));
-                    OnReadRegister?.Invoke(DevID, transitionId, result);
-                }
                     break;
-                case PDUCode.WRITE_SINGLE_REGISTER: //写单个寄存器响应
-                case PDUCode.WRITE_MULTIPLE_REGISTER: //写多个寄存器响应
-                {
-                    // 读取返回的数据
-                    var bits = buffer.ReadBytes();
-                    // 创建结果数组，每个寄存器占2个字节
-                    var result = new ushort[bits.Length / 2];
-
-                    // 解析返回的数据
-                    for (int i = 0; i < result.Length; i++)
-                    {
-                        // 将网络字节序转换为主机字节序，并存储到结果数组中
-                        result[i] = (ushort)IPAddress.NetworkToHostOrder((short)BitConverter.ToUInt16(bits, i * 2));
-                    }
-
-                    // 输出写入成功的消息到日志
-                    Log($"Write Register:" + string.Join("-", result));
-                    OnWriteRegister?.Invoke(DevID, result);
                 }
-                    break;
                 default:
                 {
                     var symbol = buffer.ReadByte(); //串行链路或其它总线上连接的远程从站的识别码
                     var code = buffer.ReadByte(); //错误命令码
                     var error = buffer.ReadByte(); //错误码
-                    Debug.LogError($"Modbus Error:{symbol} {code} {error} {ErrorCode[error]}");
-                }
-
+                    Debug.LogError($"Modbus Error:{symbol} {code} {error}");
                     break;
+                }
             }
-        }
-
-        void Log(string message)
-        {
-#if LOG
-            Debug.Log(message);
-#endif
         }
     }
 }

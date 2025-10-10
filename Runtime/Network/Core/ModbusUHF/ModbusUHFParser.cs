@@ -12,8 +12,7 @@ namespace UNetwork
         public MemoryStream memoryStream;
         private bool isOK;
         private readonly int packetSizeLength;
-        private byte[] tempBytes = new byte[2];
-
+        
         public ModbusUHFParser(int packetSizeLength, CircularBuffer buffer, MemoryStream memoryStream)
         {
             this.packetSizeLength = packetSizeLength;
@@ -40,14 +39,8 @@ namespace UNetwork
                         }
                         else
                         {
-                            this.buffer.Read(tempBytes, 0, 2);
-                            this.packetSize = ByteHelper.ReadBigUshort(this.tempBytes);
-
-                            if (this.packetSize > ushort.MaxValue || this.packetSize < Packet.MinPacketSize)
-                            {
-                                throw new Exception($"recv packet size error:, 可能是外网探测端口: {this.packetSize}");
-                            }
-
+                            this.buffer.Read(this.memoryStream.GetBuffer(), 0, 1);
+                            this.packetSize = (ushort)BitConverter.ToInt32(this.memoryStream.GetBuffer(), 0);
                             this.state = ParserState.PacketBody;
                         }
 
@@ -60,9 +53,10 @@ namespace UNetwork
                         else
                         {
                             this.memoryStream.Seek(0, SeekOrigin.Begin);
-                            this.memoryStream.SetLength(this.packetSize + 2);
+                            this.memoryStream.SetLength(this.packetSize+1);
                             byte[] bytes = this.memoryStream.GetBuffer();
-                            this.buffer.Read(bytes, 0, this.packetSize);
+                            bytes[0] = (byte)packetSize;
+                            this.buffer.Read(bytes, 1, this.packetSize);
                             this.isOK = true;
                             this.state = ParserState.PacketSize;
                             finish = true;

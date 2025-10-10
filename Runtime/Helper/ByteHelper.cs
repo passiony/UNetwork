@@ -217,5 +217,13 @@ namespace UNetwork
 
             return current_crc_value;
         }
+        
+        public static string ByteArrayToHexString(byte[] data)
+        {
+            StringBuilder sb = new StringBuilder(data.Length * 3);
+            foreach (byte b in data)
+                sb.Append(Convert.ToString(b, 16).PadLeft(2, '0'));
+            return sb.ToString().ToUpper();
+        }
     }
 }
