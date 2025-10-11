@@ -88,7 +88,8 @@ namespace UNetwork
         protected override void OnConnectMessage(int c)
         {
             Transitions = new Dictionary<int, ushort>();
-            Debug.Log("连接成功");
+            Debug.Log(DevName + "连接成功");
+
             StopAllCoroutines();
             
             if (AutoReadCoil)
@@ -287,6 +288,96 @@ namespace UNetwork
                     Buffer.BlockCopy(registerBytes, 0, bytes, 7 + i * 2, 2);
                 }
 
+                Send(startAddr, bytes);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"写入寄存器时发生错误: {ex.Message}");
+            }
+        }
+        public void WriteMultipleRegistersInt(ushort startAddr, int[] array)
+        {
+            try
+            {
+                // 参数校验：检查数组是否为空或长度为0
+                if (array == null || array.Length == 0)
+                    throw new ArgumentException("寄存器数组不能为空");
+                // 参数校验：检查数组长度是否超出最大限制
+                if (array.Length > READ_REGISTER_COUNT)
+                    throw new ArgumentException("寄存器数组长度超出限制");
+
+                // 获取要写入的寄存器数量
+                ushort length = (ushort)array.Length;
+                // 计算数据字节数（每个寄存器占2个字节）
+                byte byteCount = (byte)(length * 4);
+                // 创建用于发送的字节数组，包含7字节头部信息和数据部分
+                byte[] bytes = new byte[7 + byteCount];
+
+                // 写入协议头：单元ID（设备地址）
+                bytes[0] = PDUCode.UnitID_WRITE_REGISTER;
+                // 写入协议头：功能码（写多个寄存器）
+                bytes[1] = PDUCode.WRITE_MULTIPLE_REGISTER;
+
+                // 写入起始地址（大端序）：将ushort转换为大端字节数组并复制到发送缓冲区
+                Buffer.BlockCopy(startAddr.ToBigBytes(true), 0, bytes, 2, 2);
+                // 写入寄存器数量（大端序）：将ushort转换为大端字节数组并复制到发送缓冲区
+                Buffer.BlockCopy(length.ToBigBytes(true), 0, bytes, 4, 2);
+                // 写入字节计数：数据部分的总字节数
+                bytes[6] = byteCount;
+
+                // 直接写入寄存器数据（避免中间集合）
+                // 遍历每个寄存器值，将其转换为大端字节数组并写入发送缓冲区
+                for (int i = 0; i < array.Length; i++)
+                {
+                    // 将当前寄存器值转换为大端字节数组
+                    byte[] registerBytes = array[i].ToBigBytes(true);
+                    // 将字节数据复制到发送缓冲区的正确位置（从第7字节开始的数据部分）
+                    Buffer.BlockCopy(registerBytes, 0, bytes, 7 + i * 4, 4);
+                }
+
+                Send(startAddr, bytes);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"写入寄存器时发生错误: {ex.Message}");
+            }
+        }
+        public void WriteMultipleRegistersBytes(ushort startAddr, byte[] array)
+        {
+            try
+            {
+                // 参数校验：检查数组是否为空或长度为0
+                if (array == null || array.Length == 0)
+                    throw new ArgumentException("寄存器数组不能为空");
+                // 参数校验：检查数组长度是否超出最大限制
+                if (array.Length > READ_REGISTER_COUNT)
+                    throw new ArgumentException("寄存器数组长度超出限制");
+
+                // 获取要写入的寄存器数量
+                ushort length = (ushort)array.Length;
+                // 计算数据字节数（每个寄存器占2个字节）
+                byte byteCount = (byte)(length);
+                // 创建用于发送的字节数组，包含7字节头部信息和数据部分
+                byte[] bytes = new byte[7 + byteCount];
+
+                // 写入协议头：单元ID（设备地址）
+                bytes[0] = PDUCode.UnitID_WRITE_REGISTER;
+                // 写入协议头：功能码（写多个寄存器）
+                bytes[1] = PDUCode.WRITE_MULTIPLE_REGISTER;
+
+                // 写入起始地址（大端序）：将ushort转换为大端字节数组并复制到发送缓冲区
+                Buffer.BlockCopy(startAddr.ToBigBytes(true), 0, bytes, 2, 2);
+                // 写入寄存器数量（大端序）：将ushort转换为大端字节数组并复制到发送缓冲区
+                Buffer.BlockCopy(length.ToBigBytes(true), 0, bytes, 4, 2);
+                // 写入字节计数：数据部分的总字节数
+                bytes[6] = byteCount;
+
+                // 直接写入寄存器数据（避免中间集合）
+                // 遍历每个寄存器值，将其转换为大端字节数组并写入发送缓冲区
+                for (int i = 0; i < array.Length; i++)
+                {
+                    bytes[7 + i] = array[i];
+                }
                 Send(startAddr, bytes);
             }
             catch (Exception ex)
@@ -570,10 +661,8 @@ namespace UNetwork
                     break;
                 default:
                 {
-                    var symbol = buffer.ReadByte(); //串行链路或其它总线上连接的远程从站的识别码
-                    var code = buffer.ReadByte(); //错误命令码
-                    var error = buffer.ReadByte(); //错误码
-                    Debug.LogError($"Modbus Error:{symbol} {code} {error} {ErrorCode[error]}");
+                    var error = buffer.ReadByte(); //错误命令码
+                    Debug.LogError($"Modbus Error: {error} {ErrorCode[error]}");
                 }
 
                     break;

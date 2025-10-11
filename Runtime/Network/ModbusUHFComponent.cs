@@ -21,7 +21,7 @@ namespace UNetwork
 
         protected override void OnConnectMessage(int c)
         {
-            Debug.Log("连接成功");
+            Debug.Log(DevName + "连接成功");
         }
 
         /// <summary>
@@ -96,6 +96,7 @@ namespace UNetwork
                     {
                         OnReadRegister?.Invoke(DevID, epcID);
                     }
+
                     break;
                 }
                 default:

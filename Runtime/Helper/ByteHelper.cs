@@ -225,5 +225,17 @@ namespace UNetwork
                 sb.Append(Convert.ToString(b, 16).PadLeft(2, '0'));
             return sb.ToString().ToUpper();
         }
+        
+        public static ushort SetBit(ushort value, int offset, bool isSet)
+        {
+            // 参数检查（0 ≤ offset ≤ 15）
+            if (offset < 0 || offset > 15)
+                throw new ArgumentOutOfRangeException("offset 必须在 0 到 15 之间");
+    
+            ushort mask = (ushort)(1 << offset); // 生成掩码
+            return isSet 
+                ? (ushort)(value | mask)   // 设为 1
+                : (ushort)(value & ~mask); // 设为 0
+        }
     }
 }
