@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Text;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -15,9 +13,6 @@ namespace UNetwork
         public string DevName = "RFID#1";
 
         public UnityEvent<int, byte[]> OnReadRegister;
-
-        // 最大寄存器数量限制
-        public ushort READ_REGISTER_COUNT = 16;
 
         protected override void OnConnectMessage(int c)
         {
@@ -36,9 +31,6 @@ namespace UNetwork
                 // 参数校验：检查数组是否为空或长度为0
                 if (array == null || array.Length == 0)
                     throw new ArgumentException("寄存器数组不能为空");
-                // 参数校验：检查数组长度是否超出最大限制
-                if (array.Length > READ_REGISTER_COUNT)
-                    throw new ArgumentException("寄存器数组长度超出限制");
 
                 // 获取要写入的寄存器数量
                 byte length = (byte)array.Length;
@@ -96,15 +88,12 @@ namespace UNetwork
                     {
                         OnReadRegister?.Invoke(DevID, epcID);
                     }
-
                     break;
                 }
                 default:
                 {
-                    var symbol = buffer.ReadByte(); //串行链路或其它总线上连接的远程从站的识别码
-                    var code = buffer.ReadByte(); //错误命令码
                     var error = buffer.ReadByte(); //错误码
-                    Debug.LogError($"Modbus Error:{symbol} {code} {error}");
+                    Debug.LogError($"Modbus Error: {error}");
                     break;
                 }
             }

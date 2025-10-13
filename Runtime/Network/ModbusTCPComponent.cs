@@ -43,21 +43,24 @@ namespace UNetwork
         public UnityEvent<int, ushort[]> OnWriteRegister;
 
         // 默认寄存器起始地址 (D3000)
-        private const ushort REGISTER_ADDR = 0x0BB8;
+        public const ushort REGISTER_ADDR = 0x0BB8;
 
         // 默认写线圈起始地址 (D24576)
-        private const ushort WRITE_COIL_ADDR1 = 0x6000;
-        private const ushort WRITE_COIL_ADDR2 = 0x6100;
+        public const ushort WRITE_COIL_ADDR1 = 0x6000;
+        public const ushort WRITE_COIL_ADDR2 = 0x6100;
 
         // 默认读线圈起始地址 (D20480)
-        private const ushort READ_COIL_ADDR1 = 0x5000;
-        private const ushort READ_COIL_ADDR2 = 0x5100;
+        public const ushort READ_COIL_ADDR1 = 0x5000;
+        public const ushort READ_COIL_ADDR2 = 0x5100;
 
         // 默认RTU透传，写入寄存器起始地址 (D4000)
         public const ushort WRITE_RTU_ADDR = 0x0FA0;
 
         //读取RTU透传数据。默认寄存器起始地址 (D4300)
         public const ushort READE_RTU_ADDR = 0x10CC;
+        
+        //单个PLC线圈数量
+        public const ushort A_PLC_COIL_COUNT = 16;
 
         // 最大线圈数量限制
         public ushort READ_COIL_COUNT = 16;
@@ -91,7 +94,7 @@ namespace UNetwork
             Debug.Log(DevName + "连接成功");
 
             StopAllCoroutines();
-            
+
             if (AutoReadCoil)
                 StartCoroutine(CoReadCoil(READ_COIL_COUNT));
 
@@ -106,15 +109,15 @@ namespace UNetwork
             {
                 yield return new WaitForSeconds(1f / AutoReadCoilFrequency);
                 // 调用带起始地址的重载方法，使用默认读线圈地址
-                if (coilCount <= 16)
+                if (coilCount <= A_PLC_COIL_COUNT)
                 {
                     ReadMultipleCoil(READ_COIL_ADDR1, coilCount);
                 }
                 else
                 {
-                    ReadMultipleCoil(READ_COIL_ADDR1, 16);
+                    ReadMultipleCoil(READ_COIL_ADDR1, A_PLC_COIL_COUNT);
                     yield return new WaitForSeconds(1f / AutoReadCoilFrequency);
-                    ReadMultipleCoil(READ_COIL_ADDR2, (ushort)(coilCount - 16));
+                    ReadMultipleCoil(READ_COIL_ADDR2, (ushort)(coilCount - A_PLC_COIL_COUNT));
                 }
             }
         }
@@ -176,7 +179,7 @@ namespace UNetwork
             // 写入寄存器数量（大端序）：将ushort转换为大端字节数组并复制到发送缓冲区
             Buffer.BlockCopy(length.ToBigBytes(true), 0, bytes, 5, 2);
             // CRC校验
-            var crc = ByteHelper.CRC16(bytes,1, 6);
+            var crc = ByteHelper.CRC16(bytes, 1, 6);
             Buffer.BlockCopy(crc.ToBytes(), 0, bytes, 7, 2);
 
             return bytes;
@@ -295,6 +298,7 @@ namespace UNetwork
                 Debug.LogError($"写入寄存器时发生错误: {ex.Message}");
             }
         }
+
         public void WriteMultipleRegistersInt(ushort startAddr, int[] array)
         {
             try
@@ -342,6 +346,7 @@ namespace UNetwork
                 Debug.LogError($"写入寄存器时发生错误: {ex.Message}");
             }
         }
+
         public void WriteMultipleRegistersBytes(ushort startAddr, byte[] array)
         {
             try
@@ -378,6 +383,7 @@ namespace UNetwork
                 {
                     bytes[7 + i] = array[i];
                 }
+
                 Send(startAddr, bytes);
             }
             catch (Exception ex)
@@ -496,14 +502,14 @@ namespace UNetwork
         public void ReadMultipleCoil(ushort coilCount)
         {
             // 调用带起始地址的重载方法，使用默认读线圈地址
-            if (coilCount <= 16)
+            if (coilCount <= A_PLC_COIL_COUNT)
             {
                 ReadMultipleCoil(READ_COIL_ADDR1, coilCount);
             }
             else
             {
-                ReadMultipleCoil(READ_COIL_ADDR1, 16);
-                ReadMultipleCoil(READ_COIL_ADDR2, (ushort)(coilCount - 16));
+                ReadMultipleCoil(READ_COIL_ADDR1, A_PLC_COIL_COUNT);
+                ReadMultipleCoil(READ_COIL_ADDR2, (ushort)(coilCount - A_PLC_COIL_COUNT));
             }
         }
 
@@ -590,7 +596,7 @@ namespace UNetwork
                             Buffer.BlockCopy(result, 0, CoilsData, 0, result.Length);
 
                         if (startAddr == READ_COIL_ADDR2)
-                            Buffer.BlockCopy(result, 0, CoilsData, 16, result.Length);
+                            Buffer.BlockCopy(result, 0, CoilsData, A_PLC_COIL_COUNT, result.Length);
 
                         OnReadCoil?.Invoke(DevID, startAddr, CoilsData);
                     }
