@@ -11,6 +11,8 @@ namespace UNetwork
     /// <summary>
     /// Modbus TCP通信组件类，继承自ClientComponent，用于实现Modbus协议的客户端通信功能
     /// 支持读写寄存器和线圈操作
+    /// D0的地址是十进制0，D4000就是十进制4000。
+    /// HD0的地址是41088，HD2000就是43088。指令发送期间是十六进制，不是字符串
     /// </summary>
     public class ModbusTCPComponent : ClientComponent
     {
