@@ -623,7 +623,10 @@ namespace UNetwork
 
                     // 输出解析后的寄存器值到日志
                     Log("Read Register:" + string.Join("-", result));
-                    OnReadRegister?.Invoke(DevID, transitionId, result);
+                    if (Transitions.TryGetValue(transitionId, out ushort startAddr))
+                    {
+                        OnReadRegister?.Invoke(DevID, startAddr, result);
+                    }
                 }
                     break;
                 case PDUCode.WRITE_SINGLE_COIL: //写单个线圈响应
