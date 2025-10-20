@@ -2,16 +2,16 @@
 
 namespace UNetwork
 {
-    public class ModbusHeader
+    public static class ModbusHeader
     {
         // MBAP报文头 : [事务元标识符+协议标识符+PDU长度+单元标识符] 7字节
         public static ushort transactionId = 0x0001; // 事务ID：0x0001 → [0x00, 0x01]
         public static ushort protocolId = 0x0000; // 协议ID：0x0000 → [0x00, 0x00]
         public static byte unitId = 0101; // 单元标识符：从站地址 → [0x06]
 
-        private readonly byte[] protocalHeader;
-
-        public ModbusHeader(int headerSize)
+        private static byte[] protocalHeader;
+        
+        public static void Init(int headerSize)
         {
             protocalHeader = new byte[headerSize];
         }
@@ -21,7 +21,7 @@ namespace UNetwork
         /// </summary>
         /// <param name="length">长度：PDU部分（功能码+数据）</param>
         /// <returns>MBAP报文头 字节流</returns>
-        public byte[] GetData(ushort length)
+        public static byte[] GetData(ushort length)
         {
             transactionId++;
             if (transactionId > 5000) transactionId = 1;

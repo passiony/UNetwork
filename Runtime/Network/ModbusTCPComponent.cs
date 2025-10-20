@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.Serialization;
 
 namespace UNetwork
 {
@@ -39,6 +40,11 @@ namespace UNetwork
         /// </summary>
         public int AutoReadRegisterFrequency = 1;
 
+        /// <summary>
+        /// 字节发送频率
+        /// </summary>
+        public float SendByteInterval = 0.1f;
+
         public UnityEvent<int, int, byte[]> OnReadCoil;
         public UnityEvent<int, ushort[]> OnWriteCoil;
         public UnityEvent<int, int, ushort[]> OnReadRegister;
@@ -60,7 +66,7 @@ namespace UNetwork
 
         //读取RTU透传数据。默认寄存器起始地址 (D4300)
         public const ushort READE_RTU_ADDR = 0x10CC;
-        
+
         //单个PLC线圈数量
         public const ushort A_PLC_COIL_COUNT = 16;
 
@@ -88,11 +94,14 @@ namespace UNetwork
 
         // 发送时务
         private Dictionary<int, ushort> Transitions;
+        private Queue<byte[]> SendQueue;
         private byte[] CoilsData;
+        private float sendByteTime;
 
         protected override void OnConnectMessage(int c)
         {
             Transitions = new Dictionary<int, ushort>();
+            SendQueue = new Queue<byte[]>();
             Debug.Log(DevName + "连接成功");
 
             StopAllCoroutines();
@@ -102,6 +111,31 @@ namespace UNetwork
 
             if (AutoReadRegister)
                 StartCoroutine(CoReadRegisters());
+        }
+
+        public void SendEnqueue(ushort startAdd, byte[] data)
+        {
+            var header = ModbusHeader.GetData((ushort)data.Length);
+            var fullData = new byte[header.Length + data.Length];
+            Buffer.BlockCopy(header, 0, fullData, 0, header.Length);
+            Buffer.BlockCopy(data, 0, fullData, header.Length, data.Length);
+            //Log(ByteHelper.ByteArrayToHexString(fullData));
+            SendQueue.Enqueue(fullData);
+            Transitions.Add(ModbusHeader.transactionId, startAdd);
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+            sendByteTime += Time.deltaTime;
+            if (sendByteTime > SendByteInterval)
+            {
+                if (SendQueue.Count > 0)
+                {
+                    var data = SendQueue.Dequeue();
+                    Send(data);
+                }
+            }
         }
 
         IEnumerator CoReadCoil(ushort coilCount)
@@ -118,7 +152,6 @@ namespace UNetwork
                 else
                 {
                     ReadMultipleCoil(READ_COIL_ADDR1, A_PLC_COIL_COUNT);
-                    yield return new WaitForSeconds(1f / AutoReadCoilFrequency);
                     ReadMultipleCoil(READ_COIL_ADDR2, (ushort)(coilCount - A_PLC_COIL_COUNT));
                 }
             }
@@ -143,11 +176,12 @@ namespace UNetwork
         /// <summary>
         /// 透传RTU寄存器
         /// </summary>
-        /// <param name="startAddr"></param>
-        /// <param name="length"></param>
-        public void RequestRTU(ushort startAddr, ushort length)
+        /// <param name="devAddr">设备地址</param>
+        /// <param name="startAddr">寄存器起始地址</param>
+        /// <param name="length">寄存器长度</param>
+        public void RequestRTU(byte devAddr, ushort startAddr, ushort length)
         {
-            var rtuBytes = GetRTUCmd(startAddr, length);
+            var rtuBytes = GetRTUCmd(devAddr, startAddr, length);
             WriteRTURegisters(WRITE_RTU_ADDR, rtuBytes);
         }
 
@@ -160,20 +194,23 @@ namespace UNetwork
             ReadMultipleRegisters(READE_RTU_ADDR, length);
         }
 
+        //设备地址
+        private byte DEV_ADD = 0x01;
+
         /// <summary>
         /// 获取RTU透传读取命令
         /// </summary>
         /// <param name="startAddr"></param>
         /// <param name="length"></param>
         /// <returns></returns>
-        byte[] GetRTUCmd(ushort startAddr, ushort length)
+        byte[] GetRTUCmd(byte devAddr, ushort startAddr, ushort length)
         {
             byte[] bytes = new byte[9];
 
             // 写入数据长度
             bytes[0] = 8;
             // 写入协议头：设备ID
-            bytes[1] = 0x05;
+            bytes[1] = devAddr;
             // 写入协议头：功能码（读寄存器）
             bytes[2] = PDUCode.READ_HOLDING_REGISTER;
             // 写入起始地址（大端序）：将ushort转换为大端字节数组并复制到发送缓冲区
@@ -230,7 +267,7 @@ namespace UNetwork
                 }
 
                 // Debug.Log(string.Join(" ", bytes));
-                Send(startAddr, bytes);
+                SendEnqueue(startAddr, bytes);
             }
             catch (Exception ex)
             {
@@ -293,7 +330,7 @@ namespace UNetwork
                     Buffer.BlockCopy(registerBytes, 0, bytes, 7 + i * 2, 2);
                 }
 
-                Send(startAddr, bytes);
+                SendEnqueue(startAddr, bytes);
             }
             catch (Exception ex)
             {
@@ -341,7 +378,7 @@ namespace UNetwork
                     Buffer.BlockCopy(registerBytes, 0, bytes, 7 + i * 4, 4);
                 }
 
-                Send(startAddr, bytes);
+                SendEnqueue(startAddr, bytes);
             }
             catch (Exception ex)
             {
@@ -386,7 +423,7 @@ namespace UNetwork
                     bytes[7 + i] = array[i];
                 }
 
-                Send(startAddr, bytes);
+                SendEnqueue(startAddr, bytes);
             }
             catch (Exception ex)
             {
@@ -424,7 +461,7 @@ namespace UNetwork
                 // 写入寄存器数量（大端序）：将ushort转换为大端字节数组并复制到发送缓冲区
                 Buffer.BlockCopy(length.ToBigBytes(true), 0, bytes, 4, 2);
 
-                Send(startAddr, bytes);
+                SendEnqueue(startAddr, bytes);
             }
             catch (Exception ex)
             {
@@ -489,7 +526,7 @@ namespace UNetwork
                 // 将线圈数据复制到发送缓冲区
                 Buffer.BlockCopy(byteArray, 0, bytes, 7, byteArray.Length);
 
-                Send(startAddr, bytes);
+                SendEnqueue(startAddr, bytes);
             }
             catch (Exception ex)
             {
@@ -535,18 +572,12 @@ namespace UNetwork
                 // 写入线圈数量（大端序）：将ushort转换为大端字节数组并复制到发送缓冲区
                 Buffer.BlockCopy(coilCount.ToBigBytes(true), 0, bytes, 4, 2);
 
-                Send(startAddr, bytes);
+                SendEnqueue(startAddr, bytes);
             }
             catch (Exception ex)
             {
                 Debug.LogError($"读取多个线圈时发生错误: {ex.Message}");
             }
-        }
-
-        public void Send(ushort startAdd, byte[] data)
-        {
-            Send(data);
-            Transitions.Add(ModbusHeader.transactionId, startAdd);
         }
 
         /// <summary>
@@ -589,9 +620,6 @@ namespace UNetwork
                         }
                     }
 
-                    // 输出解析后的线圈状态到日志
-                    Log("Read Coil:" + string.Join("-", result));
-
                     if (Transitions.TryGetValue(transitionId, out ushort startAddr))
                     {
                         if (startAddr == READ_COIL_ADDR1)
@@ -600,6 +628,8 @@ namespace UNetwork
                         if (startAddr == READ_COIL_ADDR2)
                             Buffer.BlockCopy(result, 0, CoilsData, A_PLC_COIL_COUNT, result.Length);
 
+                        // 输出解析后的线圈状态到日志
+                        Log("Read Coil:" + string.Join("-", CoilsData));
                         OnReadCoil?.Invoke(DevID, startAddr, CoilsData);
                     }
                 }
