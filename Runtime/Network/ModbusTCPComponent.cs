@@ -98,8 +98,11 @@ namespace UNetwork
         private byte[] CoilsData;
         private float sendByteTime;
 
+        private ModbusHeader Header;
+
         protected override void OnConnectMessage(int c)
         {
+            Header = ((ModbusTCPChannel)Service.GetChannel()).Header;
             Transitions = new Dictionary<int, ushort>();
             SendQueue = new Queue<byte[]>();
             Debug.Log(DevName + "连接成功");
@@ -115,13 +118,13 @@ namespace UNetwork
 
         public void SendEnqueue(ushort startAdd, byte[] data)
         {
-            var header = ModbusHeader.GetData((ushort)data.Length);
+            var header = Header.GetData((ushort)data.Length);
             var fullData = new byte[header.Length + data.Length];
             Buffer.BlockCopy(header, 0, fullData, 0, header.Length);
             Buffer.BlockCopy(data, 0, fullData, header.Length, data.Length);
             //Log(ByteHelper.ByteArrayToHexString(fullData));
             SendQueue.Enqueue(fullData);
-            Transitions.Add(ModbusHeader.transactionId, startAdd);
+            Transitions[Header.transactionId] = startAdd;
         }
 
         protected override void Update()
@@ -632,8 +635,9 @@ namespace UNetwork
                         Log("Read Coil:" + string.Join("-", CoilsData));
                         OnReadCoil?.Invoke(DevID, startAddr, CoilsData);
                     }
-                }
+
                     break;
+                }
                 case PDUCode.READ_INPUT_REGISTER: //读输入寄存器响应
                 case PDUCode.READ_HOLDING_REGISTER: //读保持寄存器响应
                 {
@@ -657,8 +661,9 @@ namespace UNetwork
                     {
                         OnReadRegister?.Invoke(DevID, startAddr, result);
                     }
-                }
+
                     break;
+                }
                 case PDUCode.WRITE_SINGLE_COIL: //写单个线圈响应
                 case PDUCode.WRITE_MULTIPLE_COIL: //写多个线圈响应
                 {
@@ -678,8 +683,8 @@ namespace UNetwork
                     Log($"Write Coil:" + string.Join("-", result));
 
                     OnWriteCoil?.Invoke(DevID, result);
-                }
                     break;
+                }
                 case PDUCode.WRITE_SINGLE_REGISTER: //写单个寄存器响应
                 case PDUCode.WRITE_MULTIPLE_REGISTER: //写多个寄存器响应
                 {
@@ -698,15 +703,14 @@ namespace UNetwork
                     // 输出写入成功的消息到日志
                     Log($"Write Register:" + string.Join("-", result));
                     OnWriteRegister?.Invoke(DevID, result);
-                }
                     break;
+                }
                 default:
                 {
                     var error = buffer.ReadByte(); //错误命令码
                     Debug.LogError($"Modbus Error: {error} {ErrorCode[error]}");
-                }
-
                     break;
+                }
             }
         }
 

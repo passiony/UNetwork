@@ -26,10 +26,12 @@ namespace UNetwork
 
         private const int HeadSize = 6;
 
+        public ModbusHeader Header;
 
-        public ModbusTCPChannel(IPEndPoint ipEndPoint, ModbusTCPService tcpService) : base(tcpService, ChannelType.Connect)
+        public ModbusTCPChannel(IPEndPoint ipEndPoint, ModbusTCPService tcpService) : base(tcpService,
+            ChannelType.Connect)
         {
-            ModbusHeader.Init(HeadSize);
+            Header = new ModbusHeader(HeadSize);
             this.memoryStream = tcpService.MemoryStreamManager.GetStream("message", ushort.MaxValue);
 
             this.socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -81,7 +83,7 @@ namespace UNetwork
             {
                 throw new Exception($"send packet too large: {stream.Length}");
             }
-            
+
             this.sendBuffer.Write(stream);
         }
 

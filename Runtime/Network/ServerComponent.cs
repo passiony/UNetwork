@@ -21,7 +21,7 @@ namespace UNetwork
         public bool IsConnecting => this.Service.GetChannel().IsConnected;
 
 
-        public override void Init()
+        protected override void Init()
         {
             SynchronizationContext.SetSynchronizationContext(OneThreadSynchronizationContext.Instance);
         }
