@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Threading;
 using UnityEngine;
 
@@ -12,6 +13,9 @@ namespace UNetwork
         public string IP;
         public int Port;
         public NetworkProtocol protocol;
+
+        public bool Reconnect;
+        public float ReconnectDelay = 5;
 
         public AService Service { get; private set; }
         public Session Session { get; private set; }
@@ -98,8 +102,18 @@ namespace UNetwork
         protected virtual void OnErrorMessage(int e)
         {
             Debug.LogError(gameObject.name + "网络错误：" + e);
+            if (Reconnect)
+            {
+                StopAllCoroutines();
+                StartCoroutine(delayReconnect());
+            }
         }
 
+        IEnumerator delayReconnect()
+        {
+            yield return new WaitForSeconds(ReconnectDelay);
+            Connect();
+        }
         protected virtual void OnConnectMessage(int c)
         {
             Debug.Log(gameObject.name + "连接成功");

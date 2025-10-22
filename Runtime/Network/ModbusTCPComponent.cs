@@ -130,13 +130,16 @@ namespace UNetwork
         protected override void Update()
         {
             base.Update();
-            sendByteTime += Time.deltaTime;
-            if (sendByteTime > SendByteInterval)
+            if (IsConnecting)
             {
-                if (SendQueue?.Count > 0)
+                sendByteTime += Time.deltaTime;
+                if (sendByteTime > SendByteInterval)
                 {
-                    var data = SendQueue.Dequeue();
-                    Send(data);
+                    if (SendQueue?.Count > 0)
+                    {
+                        var data = SendQueue.Dequeue();
+                        Send(data);
+                    }
                 }
             }
         }
