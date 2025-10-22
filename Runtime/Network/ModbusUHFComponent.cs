@@ -19,6 +19,14 @@ namespace UNetwork
             Debug.Log(DevName + "连接成功");
         }
 
+        //设置主动模式读卡器间隔, 前提读卡区域只能一张卡
+        // void SetReadCardInterval(int millsecond = 10)
+        // {
+        //     byte START_ADDR = 0x00;
+        //     var array = millsecond.ToBigBytes(false);
+        //     WriteCommands(START_ADDR, 0x42, array);
+        // }
+
         /// <summary>
         /// 写多个寄存器的核心方法
         /// </summary>
@@ -88,12 +96,12 @@ namespace UNetwork
                     {
                         OnReadRegister?.Invoke(DevID, epcID);
                     }
+
                     break;
                 }
                 default:
                 {
-                    var error = buffer.ReadByte(); //错误码
-                    Debug.LogError($"Modbus Error: {error}");
+                    Debug.LogWarning($"{gameObject.name} Modbus cmd: {cmd}");
                     break;
                 }
             }

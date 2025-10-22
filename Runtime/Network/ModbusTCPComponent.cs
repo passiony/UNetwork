@@ -133,7 +133,7 @@ namespace UNetwork
             sendByteTime += Time.deltaTime;
             if (sendByteTime > SendByteInterval)
             {
-                if (SendQueue.Count > 0)
+                if (SendQueue?.Count > 0)
                 {
                     var data = SendQueue.Dequeue();
                     Send(data);
@@ -708,7 +708,7 @@ namespace UNetwork
                 default:
                 {
                     var error = buffer.ReadByte(); //错误命令码
-                    Debug.LogError($"Modbus Error: {error} {ErrorCode[error]}");
+                    Debug.LogWarning($"{gameObject.name} : Error: {error} {ErrorCode[error]}");
                     break;
                 }
             }
