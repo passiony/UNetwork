@@ -22,7 +22,17 @@ namespace UNetwork
 
         public IMessagePacker MessagePacker { get; set; }
         public IMessageDispatcher MessageDispatcher { get; set; }
-        public bool IsConnecting => Service.GetChannel().IsConnected;
+        public bool IsConnecting
+        {
+            get
+            {
+                if (Session != null)
+                {
+                    return Service.GetChannel().IsConnected;
+                }
+                return false;
+            }
+        }
 
         public Action<int> OnConnect { get; set; }
         public Action<int> OnError { get; set; }
