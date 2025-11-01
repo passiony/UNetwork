@@ -118,13 +118,20 @@ namespace UNetwork
 
         public void SendEnqueue(ushort startAdd, byte[] data)
         {
-            var header = Header.GetData((ushort)data.Length);
-            var fullData = new byte[header.Length + data.Length];
-            Buffer.BlockCopy(header, 0, fullData, 0, header.Length);
-            Buffer.BlockCopy(data, 0, fullData, header.Length, data.Length);
-            //Log(ByteHelper.ByteArrayToHexString(fullData));
-            SendQueue.Enqueue(fullData);
-            Transitions[Header.transactionId] = startAdd;
+            if (IsConnecting)
+            {
+                var header = Header.GetData((ushort)data.Length);
+                var fullData = new byte[header.Length + data.Length];
+                Buffer.BlockCopy(header, 0, fullData, 0, header.Length);
+                Buffer.BlockCopy(data, 0, fullData, header.Length, data.Length);
+                //Log(ByteHelper.ByteArrayToHexString(fullData));
+                SendQueue.Enqueue(fullData);
+                Transitions[Header.transactionId] = startAdd;
+            }
+            else
+            {
+                Debug.LogWarning(DevName + " 未连接");
+            }
         }
 
         protected override void Update()
