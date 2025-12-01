@@ -5,23 +5,26 @@ using System.Linq;
 using System.Net;
 using UnityEngine;
 using UnityEngine.Events;
-using UnityEngine.Serialization;
 
 namespace UNetwork
 {
     /// <summary>
     /// Modbus TCP通信组件类，继承自ClientComponent，用于实现Modbus协议的客户端通信功能
     /// 支持读写寄存器和线圈操作
-    /// D0的地址是十进制0，D4000就是十进制4000。
-    /// HD0的地址是41088，HD2000就是43088。指令发送期间是十六进制，不是字符串
     /// </summary>
     public class ModbusTCPComponent : ClientComponent
     {
+        // =================================================================================
+        // 公共属性和事件
+        // =================================================================================
+        [Header("轮询设置")]
+        public PollingMode CurrentPollingMode = PollingMode.TimeDriven;
+        
         public int DevID = 1;
         public string DevName = "PLC#1";
 
         /// <summary>
-        /// 是否自动读取线圈
+        /// 是否自动读取线圈 (旧模式或作为顺序模式的开关)
         /// </summary>
         public bool AutoReadCoil;
 
@@ -31,7 +34,7 @@ namespace UNetwork
         public int AutoReadCoilFrequency = 1;
 
         /// <summary>
-        /// 是否自动读取寄存器
+        /// 是否自动读取寄存器 (旧模式或作为顺序模式的开关)
         /// </summary>
         public bool AutoReadRegister;
 
@@ -44,6 +47,11 @@ namespace UNetwork
         /// 字节发送频率
         /// </summary>
         public float SendByteInterval = 0.1f;
+        
+        /// <summary>
+        /// 顺序轮询模式下，等待响应的最大超时时间（秒）。超过此时间将发送下一个请求
+        /// </summary>
+        public float PollingTimeout = 3f;
 
         public UnityEvent<int, int, byte[]> OnReadCoil;
         public UnityEvent<int, ushort[]> OnWriteCoil;
@@ -52,7 +60,7 @@ namespace UNetwork
 
         // 默认寄存器起始地址 (D3000)
         public const ushort REGISTER_ADDR = 0x0BB8;
-
+        // ... (其他常量保持不变) ...
         // 默认写线圈起始地址 (D24576)
         public const ushort WRITE_COIL_ADDR1 = 0x6000;
         public const ushort WRITE_COIL_ADDR2 = 0x6100;
@@ -95,10 +103,16 @@ namespace UNetwork
         // 发送时务
         private Dictionary<int, ushort> Transitions;
         private Queue<byte[]> SendQueue;
-        private byte[] CoilsData;
+        public byte[] CoilsData;
         private float sendByteTime;
-
         private ModbusHeader Header;
+
+        public bool isWaitingForResponse { get; set; }
+        private IModbusPollingProvider currentProvider;
+
+        // =================================================================================
+        // 生命周期方法
+        // =================================================================================
 
         protected override void OnConnectMessage(int c)
         {
@@ -109,11 +123,22 @@ namespace UNetwork
 
             StopAllCoroutines();
 
-            if (AutoReadCoil)
-                StartCoroutine(CoReadCoil(READ_COIL_COUNT));
-
-            if (AutoReadRegister)
-                StartCoroutine(CoReadRegisters());
+            // 根据选定的模式实例化并启动 Provider
+            switch (CurrentPollingMode)
+            {
+                case PollingMode.TimeDriven:
+                    currentProvider = new ModbusTimePollingProvider(this);
+                    StartCoroutine(currentProvider.StartPolling());
+                    break;
+                case PollingMode.Sequenced:
+                    currentProvider = new ModbusSequencedPollingProvider(this);
+                    StartCoroutine(currentProvider.StartPolling());
+                    break;
+                case PollingMode.None:
+                    currentProvider = null;
+                    Debug.Log("未启用自动轮询模式。");
+                    break;
+            }
         }
 
         public void SendEnqueue(ushort startAdd, byte[] data)
@@ -124,9 +149,15 @@ namespace UNetwork
                 var fullData = new byte[header.Length + data.Length];
                 Buffer.BlockCopy(header, 0, fullData, 0, header.Length);
                 Buffer.BlockCopy(data, 0, fullData, header.Length, data.Length);
-                //Log(ByteHelper.ByteArrayToHexString(fullData));
                 SendQueue.Enqueue(fullData);
                 Transitions[Header.transactionId] = startAdd;
+                
+                // 仅在 Sequenced 模式下，且发送的是读取请求时设置等待标志
+                if (CurrentPollingMode == PollingMode.Sequenced && 
+                    (data[1] == PDUCode.READ_COIL_STATUS || data[1] == PDUCode.READ_HOLDING_REGISTER))
+                {
+                    isWaitingForResponse = true;
+                }
             }
             else
             {
@@ -147,41 +178,7 @@ namespace UNetwork
                         var data = SendQueue.Dequeue();
                         Send(data);
                     }
-                }
-            }
-        }
-
-        IEnumerator CoReadCoil(ushort coilCount)
-        {
-            CoilsData = new byte[coilCount];
-            while (true)
-            {
-                yield return new WaitForSeconds(1f / AutoReadCoilFrequency);
-                // 调用带起始地址的重载方法，使用默认读线圈地址
-                if (coilCount <= A_PLC_COIL_COUNT)
-                {
-                    ReadMultipleCoil(READ_COIL_ADDR1, coilCount);
-                }
-                else
-                {
-                    ReadMultipleCoil(READ_COIL_ADDR1, A_PLC_COIL_COUNT);
-                    ReadMultipleCoil(READ_COIL_ADDR2, (ushort)(coilCount - A_PLC_COIL_COUNT));
-                }
-            }
-        }
-
-        IEnumerator CoReadRegisters()
-        {
-            while (true)
-            {
-                yield return new WaitForSeconds(1f / AutoReadRegisterFrequency);
-                if (CustomRegister)
-                {
-                    ReadMultipleRegisters(READ_REGISTER_COUNT);
-                }
-                else
-                {
-                    ReadMultipleRegisters(CustomStartAddr, CustomLength);
+                    sendByteTime = 0; 
                 }
             }
         }
@@ -189,9 +186,6 @@ namespace UNetwork
         /// <summary>
         /// 透传RTU寄存器
         /// </summary>
-        /// <param name="devAddr">设备地址</param>
-        /// <param name="startAddr">寄存器起始地址</param>
-        /// <param name="length">寄存器长度</param>
         public void RequestRTU(byte devAddr, ushort startAddr, ushort length)
         {
             var rtuBytes = GetRTUCmd(devAddr, startAddr, length);
@@ -201,7 +195,6 @@ namespace UNetwork
         /// <summary>
         /// 读取RTU数据
         /// </summary>
-        /// <param name="length"></param>
         public void ReadRTU(ushort length)
         {
             ReadMultipleRegisters(READE_RTU_ADDR, length);
@@ -213,9 +206,6 @@ namespace UNetwork
         /// <summary>
         /// 获取RTU透传读取命令
         /// </summary>
-        /// <param name="startAddr"></param>
-        /// <param name="length"></param>
-        /// <returns></returns>
         byte[] GetRTUCmd(byte devAddr, ushort startAddr, ushort length)
         {
             byte[] bytes = new byte[9];
@@ -240,8 +230,6 @@ namespace UNetwork
         /// <summary>
         /// 透传RTU寄存器的核心方法
         /// </summary>
-        /// <param name="startAddr">起始寄存器地址（16进制）</param>
-        /// <param name="array">要写入的寄存器值数组</param>
         public void WriteRTURegisters(ushort startAddr, byte[] array)
         {
             try
@@ -279,7 +267,7 @@ namespace UNetwork
                     bytes[7 + i * 2 + 1] = array[i];
                 }
 
-                // Debug.Log(string.Join(" ", bytes));
+                // 注意：RTU 透传并非常规 Modbus 读写，不设置 isWaitingForResponse
                 SendEnqueue(startAddr, bytes);
             }
             catch (Exception ex)
@@ -291,7 +279,6 @@ namespace UNetwork
         /// <summary>
         /// 写多个寄存器的便捷方法，使用默认起始地址
         /// </summary>
-        /// <param name="array">要写入的寄存器值数组</param>
         public void WriteMultipleRegisters(ushort[] array)
         {
             // 使用默认寄存器地址
@@ -301,8 +288,6 @@ namespace UNetwork
         /// <summary>
         /// 写多个寄存器的核心方法
         /// </summary>
-        /// <param name="startAddr">起始寄存器地址（16进制）</param>
-        /// <param name="array">要写入的寄存器值数组</param>
         public void WriteMultipleRegisters(ushort startAddr, ushort[] array)
         {
             try
@@ -343,6 +328,7 @@ namespace UNetwork
                     Buffer.BlockCopy(registerBytes, 0, bytes, 7 + i * 2, 2);
                 }
 
+                // 写入操作不影响轮询队列，不设置 isWaitingForResponse
                 SendEnqueue(startAddr, bytes);
             }
             catch (Exception ex)
@@ -447,7 +433,6 @@ namespace UNetwork
         /// <summary>
         /// 读取多个寄存器的便捷方法，使用默认起始地址
         /// </summary>
-        /// <param name="count">要读取的寄存器数量</param>
         public void ReadMultipleRegisters(ushort length)
         {
             // 使用默认寄存器地址
@@ -457,8 +442,6 @@ namespace UNetwork
         /// <summary>
         /// 读取多个寄存器的核心方法
         /// </summary>
-        /// <param name="startAddr">起始寄存器地址（16进制）</param>
-        /// <param name="length">要读取的寄存器数量</param>
         public void ReadMultipleRegisters(ushort startAddr, ushort length)
         {
             try
@@ -485,7 +468,6 @@ namespace UNetwork
         /// <summary>
         /// 写入一个或者多个线圈数据的便捷方法，使用默认起始地址
         /// </summary>
-        /// <param name="array">要写入的线圈值数组（0或1）</param>
         public void WriteMultipleCoil(ushort[] array)
         {
             if (array.Length <= 14)
@@ -506,8 +488,6 @@ namespace UNetwork
         /// <summary>
         /// 写入一个或者多个线圈数据的核心方法
         /// </summary>
-        /// <param name="startAddr">起始线圈地址（16进制）</param>
-        /// <param name="array">要写入的线圈值数组（0或1）</param>
         public void WriteMultipleCoil(ushort startAddr, ushort[] array)
         {
             try
@@ -550,7 +530,6 @@ namespace UNetwork
         /// <summary>
         /// 读取一个或者多个线圈数据的便捷方法，使用默认起始地址
         /// </summary>
-        /// <param name="coilCount">要读取的线圈数量</param>
         public void ReadMultipleCoil(ushort coilCount)
         {
             // 调用带起始地址的重载方法，使用默认读线圈地址
@@ -568,8 +547,6 @@ namespace UNetwork
         /// <summary>
         /// 读取一个或者多个线圈数据的核心方法
         /// </summary>
-        /// <param name="startAddr">起始线圈地址（16进制）</param>
-        /// <param name="coilCount">要读取的线圈数量</param>
         public void ReadMultipleCoil(ushort startAddr, ushort coilCount)
         {
             try
@@ -595,130 +572,118 @@ namespace UNetwork
 
         /// <summary>
         /// 处理接收到的消息数据
-        /// 根据功能码解析返回的数据并输出到日志
         /// </summary>
-        /// <param name="bytes">接收到的原始字节数据</param>
         protected override void OnMessageMessage(byte[] bytes)
         {
-            // 创建ByteBuffer用于解析接收到的数据
             ByteBuffer buffer = new ByteBuffer(bytes);
 
-            // 读取事务ID
             var transitionId = buffer.ReadShort();
-            // 读取单元ID（设备地址）
             var unit = buffer.ReadByte();
-            // 读取功能码
             var cmd = buffer.ReadByte();
-            // 根据功能码进行不同的处理
+
             switch (cmd)
             {
-                case PDUCode.READ_COIL_STATUS: //读线圈响应
-                case PDUCode.READ_INPUT_STATUS: //读离散线圈响应
+                case PDUCode.READ_COIL_STATUS:
+                case PDUCode.READ_INPUT_STATUS:
                 {
-                    // 读取返回的字节数
                     var count = buffer.ReadByte();
-                    // 创建结果数组，每个字节包含8个线圈状态
                     var result = new byte[count * 8];
-
-                    // 解析每个字节中的线圈状态
                     for (int i = 0; i < count; i++)
                     {
-                        // 读取一个字节的数据
                         var bit = buffer.ReadByte();
-                        // 解析该字节中的每一位（每个线圈状态）
                         for (int j = 0; j < 8; j++)
                         {
-                            // 提取第j位的值（0或1）并存储到结果数组中
                             result[i * 8 + j] = (byte)((bit >> j) & 0x01);
                         }
                     }
 
                     if (Transitions.TryGetValue(transitionId, out ushort startAddr))
                     {
+                        // 处理线圈数据
                         if (startAddr == READ_COIL_ADDR1)
                             Buffer.BlockCopy(result, 0, CoilsData, 0, result.Length);
 
                         if (startAddr == READ_COIL_ADDR2)
                             Buffer.BlockCopy(result, 0, CoilsData, A_PLC_COIL_COUNT, result.Length);
 
-                        // 输出解析后的线圈状态到日志
                         Log("Read Coil:" + string.Join("-", CoilsData));
                         OnReadCoil?.Invoke(DevID, startAddr, CoilsData);
                     }
 
+                    // 【新逻辑】读取响应成功，解除 Sequenced 模式的等待
+                    if (CurrentPollingMode == PollingMode.Sequenced)
+                    {
+                        isWaitingForResponse = false;
+                    }
+
                     break;
                 }
-                case PDUCode.READ_INPUT_REGISTER: //读输入寄存器响应
-                case PDUCode.READ_HOLDING_REGISTER: //读保持寄存器响应
+                case PDUCode.READ_INPUT_REGISTER:
+                case PDUCode.READ_HOLDING_REGISTER:
                 {
-                    // 读取返回的字节数
                     var count = buffer.ReadByte();
-                    // 读取实际的寄存器数据
                     var bits = buffer.ReadBytes();
-                    // 创建结果数组，每个寄存器占2个字节
                     var result = new ushort[count / 2];
 
-                    // 解析寄存器数据
                     for (int i = 0; i < result.Length; i++)
                     {
-                        // 将网络字节序转换为主机字节序，并存储到结果数组中
                         result[i] = (ushort)IPAddress.NetworkToHostOrder((short)BitConverter.ToUInt16(bits, i * 2));
                     }
 
-                    // 输出解析后的寄存器值到日志
                     Log("Read Register:" + string.Join("-", result));
                     if (Transitions.TryGetValue(transitionId, out ushort startAddr))
                     {
                         OnReadRegister?.Invoke(DevID, startAddr, result);
                     }
 
+                    // 【新逻辑】读取响应成功，解除 Sequenced 模式的等待
+                    if (CurrentPollingMode == PollingMode.Sequenced)
+                    {
+                        isWaitingForResponse = false;
+                    }
+
                     break;
                 }
-                case PDUCode.WRITE_SINGLE_COIL: //写单个线圈响应
-                case PDUCode.WRITE_MULTIPLE_COIL: //写多个线圈响应
+                case PDUCode.WRITE_SINGLE_COIL:
+                case PDUCode.WRITE_MULTIPLE_COIL:
+                case PDUCode.WRITE_SINGLE_REGISTER:
+                case PDUCode.WRITE_MULTIPLE_REGISTER:
                 {
-                    // 读取返回的数据
+                    // 写入操作响应处理...
                     var bits = buffer.ReadBytes();
-                    // 创建结果数组，每个寄存器占2个字节
                     var result = new ushort[bits.Length / 2];
 
-                    // 解析返回的数据
                     for (int i = 0; i < result.Length; i++)
                     {
-                        // 将网络字节序转换为主机字节序，并存储到结果数组中
                         result[i] = (ushort)IPAddress.NetworkToHostOrder((short)BitConverter.ToUInt16(bits, i * 2));
                     }
 
-                    // 输出写入成功的消息到日志
-                    Log($"Write Coil:" + string.Join("-", result));
-
-                    OnWriteCoil?.Invoke(DevID, result);
-                    break;
-                }
-                case PDUCode.WRITE_SINGLE_REGISTER: //写单个寄存器响应
-                case PDUCode.WRITE_MULTIPLE_REGISTER: //写多个寄存器响应
-                {
-                    // 读取返回的数据
-                    var bits = buffer.ReadBytes();
-                    // 创建结果数组，每个寄存器占2个字节
-                    var result = new ushort[bits.Length / 2];
-
-                    // 解析返回的数据
-                    for (int i = 0; i < result.Length; i++)
+                    if (cmd == PDUCode.WRITE_SINGLE_COIL || cmd == PDUCode.WRITE_MULTIPLE_COIL)
                     {
-                        // 将网络字节序转换为主机字节序，并存储到结果数组中
-                        result[i] = (ushort)IPAddress.NetworkToHostOrder((short)BitConverter.ToUInt16(bits, i * 2));
+                        Log($"Write Coil:" + string.Join("-", result));
+                        OnWriteCoil?.Invoke(DevID, result);
+                    }
+                    else
+                    {
+                        Log($"Write Register:" + string.Join("-", result));
+                        OnWriteRegister?.Invoke(DevID, result);
                     }
 
-                    // 输出写入成功的消息到日志
-                    Log($"Write Register:" + string.Join("-", result));
-                    OnWriteRegister?.Invoke(DevID, result);
+                    // 【注意】写入响应不解除 isWaitingForResponse，保持等待读取响应的状态。
                     break;
                 }
                 default:
                 {
-                    var error = buffer.ReadByte(); //错误命令码
+                    // 错误码也视为响应，解除等待状态
+                    var error = buffer.ReadByte();
                     Debug.LogWarning($"{gameObject.name} : Error: {error} {ErrorCode[error]}");
+
+                    // 【新逻辑】错误响应，解除 Sequenced 模式的等待
+                    if (CurrentPollingMode == PollingMode.Sequenced)
+                    {
+                        isWaitingForResponse = false;
+                    }
+
                     break;
                 }
             }

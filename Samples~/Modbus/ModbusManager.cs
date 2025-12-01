@@ -22,15 +22,15 @@ public class ModbusManager : MonoBehaviour
     
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.A))
-        {
-            RequestWenDu();
-        }
-
-        if (Input.GetKeyDown(KeyCode.B))
-        {
-            ReadWenDu();
-        }
+        // if (Input.GetKeyDown(KeyCode.A))
+        // {
+        //     RequestWenDu();
+        // }
+        //
+        // if (Input.GetKeyDown(KeyCode.B))
+        // {
+        //     ReadWenDu();
+        // }
 
         // if (Input.GetKeyDown(KeyCode.A))
         // {
