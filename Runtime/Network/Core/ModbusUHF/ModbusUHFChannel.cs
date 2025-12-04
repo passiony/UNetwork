@@ -47,13 +47,13 @@ namespace UNetwork
 
         public override void Dispose()
         {
-            this.socket.Close();
-            this.innArgs.Dispose();
-            this.outArgs.Dispose();
+            this.socket?.Close();
+            this.innArgs?.Dispose();
+            this.outArgs?.Dispose();
             this.innArgs = null;
             this.outArgs = null;
             this.socket = null;
-            this.memoryStream.Dispose();
+            this.memoryStream?.Dispose();
         }
 
         private TService GetService()
