@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Net;
 using System.Threading;
 
 namespace UNetwork
@@ -9,6 +8,10 @@ namespace UNetwork
     /// </summary>
     public class ServerComponent : MonoSingleton<ServerComponent>, INetworkComponent
     {
+        public string IP = "127.0.0.1";
+        public int Port = 12345;
+        public NetworkProtocol protocol;
+
         public AService Service { get; private set; }
         public SessionServer Session { get; private set; }
 
@@ -24,6 +27,12 @@ namespace UNetwork
         protected override void Init()
         {
             SynchronizationContext.SetSynchronizationContext(OneThreadSynchronizationContext.Instance);
+
+            InitService(protocol);
+            //设置消息packer(json,protobuf)
+            MessagePacker = new ProtobufPacker();
+            //设置消息分发（可选）
+            MessageDispatcher = new OuterMessageDispatcher();
         }
 
         //server
@@ -31,35 +40,15 @@ namespace UNetwork
         {
             switch (protocol)
             {
-                case NetworkProtocol.TCP:
+                default:
                     this.Service = new TServiceServer(packetSize);
                     break;
             }
         }
 
-        /// <summary>
-        /// 创建一个新Session
-        /// </summary>
-        public void Connect(IPEndPoint ipEndPoint)
+        public void Start()
         {
-            AChannel channel = this.Service.ConnectChannel(ipEndPoint);
-            Session = new SessionServer(channel);
-            Session.Start(this);
-        }
-
-        /// <summary>
-        /// 创建一个新Session
-        /// </summary>
-        public void Connect(string address)
-        {
-            AChannel channel = this.Service.ConnectChannel(address);
-            Session = new SessionServer(channel);
-            Session.Start(this);
-        }
-
-        public void Connect(string ip, int port)
-        {
-            AChannel channel = this.Service.ConnectChannel(NetworkHelper.ToIPEndPoint(ip, port));
+            AChannel channel = this.Service.ConnectChannel(NetworkHelper.ToIPEndPoint(IP, Port));
             Session = new SessionServer(channel);
             Session.Start(this);
         }

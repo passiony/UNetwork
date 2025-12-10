@@ -5,29 +5,22 @@ using UnityEngine;
 
 public class TestServer : MonoBehaviour
 {
-    public string ip = "127.0.0.1";
-    public int port = 12346;
-    
+    private ServerComponent server;
     public string sendMessage = "server";
     public static long starttime = 0;
 
     void Start()
     {
         //获取Server实例
-        ServerManager client = ServerManager.Instance;
-        //Tcp方式初始化
-        client.InitService(NetworkProtocol.TCP);
-        //设置pack方式(json、protobuf)
-        client.MessagePacker = new ProtobufPacker();
-        //设置消息分发（可选）
-        client.MessageDispatcher = new OuterMessageDispatcher();
-        //开始服务监听
-        client.Connect(ip, port);
+        server = gameObject.GetComponent<ServerComponent>();
+
         //添加网络事件回调
-        client.OnConnect += OnConnect;
-        client.OnError += OnError;
-        //消息接收（和消息分发，都可以处理消息）
-        client.OnMessage += OnMessage;
+        server.OnConnect += OnConnect;
+        server.OnError += OnError;
+        server.OnMessage += OnMessage;
+
+        //开始服务监听
+        server.Start();
     }
 
     private void OnMessage(byte[] obj)
@@ -53,7 +46,7 @@ public class TestServer : MonoBehaviour
             var data = Encoding.UTF8.GetBytes(sendMessage);
             Debug.Log($"Send=>{data.Length}:" + sendMessage);
 
-            ServerManager.Instance.Send(data);
+            server.Send(data);
             starttime = GetTimeStamp();
         }
     }

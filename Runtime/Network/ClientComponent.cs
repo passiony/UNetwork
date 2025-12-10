@@ -10,8 +10,8 @@ namespace UNetwork
     /// </summary>
     public class ClientComponent : MonoBehaviour, INetworkComponent
     {
-        public string IP;
-        public int Port;
+        public string IP = "127.0.0.1";
+        public int Port = 12345;
         public NetworkProtocol protocol;
 
         public bool Reconnect;
@@ -22,6 +22,7 @@ namespace UNetwork
 
         public IMessagePacker MessagePacker { get; set; }
         public IMessageDispatcher MessageDispatcher { get; set; }
+
         public bool IsConnecting
         {
             get
@@ -30,6 +31,7 @@ namespace UNetwork
                 {
                     return Service.GetChannel().IsConnected;
                 }
+
                 return false;
             }
         }
@@ -124,6 +126,7 @@ namespace UNetwork
             yield return new WaitForSeconds(ReconnectDelay);
             Connect();
         }
+
         protected virtual void OnConnectMessage(int c)
         {
             Debug.Log(gameObject.name + "连接成功");
