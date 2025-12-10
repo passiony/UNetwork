@@ -9,9 +9,6 @@ namespace UNetwork
     /// </summary>
     public class ModbusUHFComponent : ClientComponent
     {
-        public int DevID = 1;
-        public string DevName = "RFID#1";
-
         public UnityEvent<int, byte[]> OnReadRegister;
 
         protected override void OnConnectMessage(int c)

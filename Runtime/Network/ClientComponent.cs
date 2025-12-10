@@ -10,8 +10,12 @@ namespace UNetwork
     /// </summary>
     public class ClientComponent : MonoBehaviour, INetworkComponent
     {
+        public int DevID = 1;
+        public string DevName = "Dev#1";
+        
         public string IP = "127.0.0.1";
         public int Port = 12345;
+        
         public NetworkProtocol protocol;
 
         public bool Reconnect;

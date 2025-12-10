@@ -14,15 +14,9 @@ namespace UNetwork
     /// </summary>
     public class ModbusTCPComponent : ClientComponent
     {
-        // =================================================================================
-        // 公共属性和事件
-        // =================================================================================
         [Header("轮询设置")]
         public PollingMode CurrentPollingMode = PollingMode.TimeDriven;
         
-        public int DevID = 1;
-        public string DevName = "PLC#1";
-
         /// <summary>
         /// 是否自动读取线圈 (旧模式或作为顺序模式的开关)
         /// </summary>

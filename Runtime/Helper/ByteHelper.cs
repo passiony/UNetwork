@@ -217,7 +217,7 @@ namespace UNetwork
 
             return current_crc_value;
         }
-        
+
         public static string ByteArrayToHexString(byte[] data)
         {
             StringBuilder sb = new StringBuilder(data.Length * 3);
@@ -225,6 +225,33 @@ namespace UNetwork
                 sb.Append(Convert.ToString(b, 16).PadLeft(2, '0'));
             return sb.ToString().ToUpper();
         }
-        
+
+        public static byte[] HexToBytes(string hexString)
+        {
+            hexString = hexString
+                .Replace(" ", "")
+                .Replace("-", "")
+                .Replace(",", "");
+            int length = hexString.Length;
+            if (length % 2 != 0)
+            {
+                throw new ArgumentException("十六进制字符串的长度必须是偶数。", nameof(hexString));
+            }
+
+            byte[] bytes = new byte[length / 2];
+            for (int i = 0; i < length; i += 2)
+            {
+                try
+                {
+                    bytes[i / 2] = byte.Parse(hexString.Substring(i, 2), System.Globalization.NumberStyles.HexNumber);
+                }
+                catch (FormatException)
+                {
+                    throw new ArgumentException($"字符串包含无效的十六进制字符: {hexString.Substring(i, 2)}", nameof(hexString));
+                }
+            }
+
+            return bytes;
+        }
     }
 }
