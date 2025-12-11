@@ -228,7 +228,7 @@ namespace UNetwork
 
         public static byte[] HexToBytes(string hexString)
         {
-            hexString = hexString
+            hexString = hexString.Trim()
                 .Replace(" ", "")
                 .Replace("-", "")
                 .Replace(",", "");
