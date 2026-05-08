@@ -77,7 +77,10 @@ namespace UNetwork
 
         // 最大寄存器数量限制
         public ushort READ_REGISTER_COUNT = 16;
-
+        
+        //设备地址
+        // private byte DEV_ADD = 0x01;
+        
         /// <summary>
         /// 错误码
         /// </summary>
@@ -104,6 +107,8 @@ namespace UNetwork
         public bool isWaitingForResponse { get; set; }
         private IModbusPollingProvider currentProvider;
 
+        private const string TAG = "<color=green>[ModbusTCP] </color>";
+        
         // =================================================================================
         // 生命周期方法
         // =================================================================================
@@ -130,7 +135,7 @@ namespace UNetwork
                     break;
                 case PollingMode.None:
                     currentProvider = null;
-                    Debug.Log("未启用自动轮询模式。");
+                    Debug.Log(TAG + "未启用自动轮询模式。");
                     break;
             }
         }
@@ -155,7 +160,7 @@ namespace UNetwork
             }
             else
             {
-                Debug.LogWarning(DevName + " 未连接");
+                Debug.LogWarning(TAG + DevName + " 未连接");
             }
         }
 
@@ -194,8 +199,7 @@ namespace UNetwork
             ReadMultipleRegisters(READE_RTU_ADDR, length);
         }
 
-        //设备地址
-        private byte DEV_ADD = 0x01;
+
 
         /// <summary>
         /// 获取RTU透传读取命令
@@ -266,7 +270,7 @@ namespace UNetwork
             }
             catch (Exception ex)
             {
-                Debug.LogError($"写入RTU寄存器时发生错误: {ex.Message}");
+                Debug.LogError($"{TAG} 写入RTU寄存器时发生错误: {ex.Message}");
             }
         }
 
@@ -327,7 +331,7 @@ namespace UNetwork
             }
             catch (Exception ex)
             {
-                Debug.LogError($"写入寄存器时发生错误: {ex.Message}");
+                Debug.LogError($"{TAG} 写入寄存器时发生错误: {ex.Message}");
             }
         }
 
@@ -375,7 +379,7 @@ namespace UNetwork
             }
             catch (Exception ex)
             {
-                Debug.LogError($"写入寄存器时发生错误: {ex.Message}");
+                Debug.LogError($"{TAG} 写入寄存器时发生错误: {ex.Message}");
             }
         }
 
@@ -420,7 +424,7 @@ namespace UNetwork
             }
             catch (Exception ex)
             {
-                Debug.LogError($"写入寄存器时发生错误: {ex.Message}");
+                Debug.LogError($"{TAG} 写入寄存器时发生错误: {ex.Message}");
             }
         }
 
@@ -455,7 +459,7 @@ namespace UNetwork
             }
             catch (Exception ex)
             {
-                Debug.LogError($"读取寄存器时发生错误: {ex.Message}");
+                Debug.LogError($"{TAG} 读取寄存器时发生错误: {ex.Message}");
             }
         }
 
@@ -517,7 +521,7 @@ namespace UNetwork
             }
             catch (Exception ex)
             {
-                Debug.LogError($"写入多个线圈时发生错误: {ex.Message}");
+                Debug.LogError($"{TAG} 写入多个线圈时发生错误: {ex.Message}");
             }
         }
 
@@ -560,7 +564,7 @@ namespace UNetwork
             }
             catch (Exception ex)
             {
-                Debug.LogError($"读取多个线圈时发生错误: {ex.Message}");
+                Debug.LogError($"{TAG} 读取多个线圈时发生错误: {ex.Message}");
             }
         }
 
@@ -600,7 +604,7 @@ namespace UNetwork
                         if (startAddr == READ_COIL_ADDR2)
                             Buffer.BlockCopy(result, 0, CoilsData, A_PLC_COIL_COUNT, result.Length);
 
-                        Log("Read Coil:" + string.Join("-", CoilsData));
+                        Log($"{TAG} Read Coil:" + string.Join("-", CoilsData));
                         OnReadCoil?.Invoke(DevID, startAddr, CoilsData);
                     }
 
@@ -624,7 +628,7 @@ namespace UNetwork
                         result[i] = (ushort)IPAddress.NetworkToHostOrder((short)BitConverter.ToUInt16(bits, i * 2));
                     }
 
-                    Log("Read Register:" + string.Join("-", result));
+                    Log($"{TAG} Read Register:" + string.Join("-", result));
                     if (Transitions.TryGetValue(transitionId, out ushort startAddr))
                     {
                         OnReadRegister?.Invoke(DevID, startAddr, result);
@@ -654,12 +658,12 @@ namespace UNetwork
 
                     if (cmd == PDUCode.WRITE_SINGLE_COIL || cmd == PDUCode.WRITE_MULTIPLE_COIL)
                     {
-                        Log($"Write Coil:" + string.Join("-", result));
+                        Log($"{TAG} Write Coil:" + string.Join("-", result));
                         OnWriteCoil?.Invoke(DevID, result);
                     }
                     else
                     {
-                        Log($"Write Register:" + string.Join("-", result));
+                        Log($"{TAG} Write Register:" + string.Join("-", result));
                         OnWriteRegister?.Invoke(DevID, result);
                     }
 
@@ -670,7 +674,7 @@ namespace UNetwork
                 {
                     // 错误码也视为响应，解除等待状态
                     var error = buffer.ReadByte();
-                    Debug.LogWarning($"{gameObject.name} : Error: {error} {ErrorCode[error]}");
+                    Debug.LogWarning($"{TAG} {gameObject.name} : Error: {error} {ErrorCode[error]}");
 
                     // 【新逻辑】错误响应，解除 Sequenced 模式的等待
                     if (CurrentPollingMode == PollingMode.Sequenced)

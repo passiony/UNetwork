@@ -21,8 +21,8 @@ namespace UNetwork
         public bool Reconnect;
         public float ReconnectDelay = 5;
 
-        public AService Service { get; private set; }
-        public Session Session { get; private set; }
+        public AService Service { get; protected set; }
+        public Session Session { get; protected set; }
 
         public IMessagePacker MessagePacker { get; set; }
         public IMessageDispatcher MessageDispatcher { get; set; }

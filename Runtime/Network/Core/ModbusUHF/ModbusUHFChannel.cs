@@ -28,10 +28,10 @@ namespace UNetwork
 
         private UHFHeader m_ModbusHeader;
 
-        public ModbusUHFChannel(IPEndPoint ipEndPoint, ModbusUHFService tcpService) : base(tcpService, ChannelType.Connect)
+        public ModbusUHFChannel(IPEndPoint ipEndPoint, ModbusUHFService aService) : base(aService, ChannelType.Connect)
         {
             this.m_ModbusHeader = new UHFHeader(HeadSize);
-            this.memoryStream = tcpService.MemoryStreamManager.GetStream("message", ushort.MaxValue);
+            this.memoryStream = aService.MemoryStreamManager.GetStream("message", ushort.MaxValue);
 
             this.socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             this.socket.NoDelay = true;
@@ -58,7 +58,7 @@ namespace UNetwork
 
         private TService GetService()
         {
-            return (TService)this.TcpService;
+            return (TService)this.aService;
         }
 
         public override void Start()

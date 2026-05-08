@@ -15,7 +15,7 @@ namespace UNetwork
     {
         public ChannelType ChannelType { get; }
 
-        public AService TcpService { get; }
+        public AService aService { get; }
 
         protected MemoryStream memoryStream;
         public MemoryStream Stream => this.memoryStream;
@@ -69,10 +69,10 @@ namespace UNetwork
             this.errorCallback?.Invoke(this, e);
         }
 
-        protected AChannel(AService tcpService, ChannelType channelType)
+        protected AChannel(AService aService, ChannelType channelType)
         {
             this.ChannelType = channelType;
-            this.TcpService = tcpService;
+            this.aService = aService;
         }
 
         public virtual void Start()
@@ -85,7 +85,7 @@ namespace UNetwork
 
         public virtual void Dispose()
         {
-            this.TcpService.Dispose();
+            this.aService.Dispose();
         }
     }
 }

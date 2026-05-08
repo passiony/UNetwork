@@ -156,8 +156,8 @@ namespace UNetwork
         UInt32 snd_nxt_ = 0;
         UInt32 rcv_nxt_ = 0;
 
-        UInt32 ts_recent_ = 0;
-        UInt32 ts_lastack_ = 0;
+        // UInt32 ts_recent_ = 0;
+        // UInt32 ts_lastack_ = 0;
         UInt32 ssthresh_ = 0;
 
         Int32 rx_rttval_ = 0;

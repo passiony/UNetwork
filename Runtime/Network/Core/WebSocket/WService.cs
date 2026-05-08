@@ -7,18 +7,18 @@ using UnityEngine;
 
 namespace UNetwork
 {
-    public class WService: AService
+    public class WService : AService
     {
         private readonly HttpListener httpListener;
 
         private WChannel channel;
-        
+
         public RecyclableMemoryStreamManager MemoryStreamManager = new RecyclableMemoryStreamManager();
 
         public WService()
         {
         }
-        
+
         public override AChannel GetChannel()
         {
             return channel;
@@ -26,12 +26,15 @@ namespace UNetwork
 
         public override AChannel ConnectChannel(IPEndPoint ipEndPoint)
         {
-            throw new NotImplementedException();
+            // string address = "ws://" + ipEndPoint.Address + ":" + ipEndPoint.Port+"/webSocket/";
+            string address = "ws://192.168.8.96:8000/webSocket/TG004";
+            Debug.Log("WS Connect: " + address);
+            return ConnectChannel(address);
         }
 
         public override AChannel ConnectChannel(string address)
         {
-			ClientWebSocket webSocket = new ClientWebSocket();
+            ClientWebSocket webSocket = new ClientWebSocket();
             channel = new WChannel(webSocket, this);
             channel.ConnectAsync(address);
             return channel;
@@ -39,13 +42,10 @@ namespace UNetwork
 
         public override void Update()
         {
-            
         }
 
         public override void Dispose()
         {
-            
         }
-        
     }
 }

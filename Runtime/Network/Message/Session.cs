@@ -35,7 +35,7 @@ namespace UNetwork
                 Component.OnConnect.Invoke(code);
             }
 
-            Debug.Log("OnConnect");
+            // Debug.Log("OnConnect");
         }
 
         private void OnError(AChannel channel, int code)

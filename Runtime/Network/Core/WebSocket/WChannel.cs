@@ -76,6 +76,8 @@ namespace UNetwork
             {
                 await ((ClientWebSocket) this.webSocket).ConnectAsync(new Uri(url), cancellationTokenSource.Token);
                 isConnected = true;
+                this.OnConnect(0);
+                
                 this.Start();
             }
             catch (Exception e)

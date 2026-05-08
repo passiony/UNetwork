@@ -24,7 +24,6 @@ namespace UNetwork
         private readonly PacketParser parser;
         private readonly byte[] packetSizeCache;
 
-        private bool isConnected;
         private bool isSending;
         private bool isRecving;
 
