@@ -27,13 +27,9 @@ namespace UNetwork
         }
 
         protected override void OnConnectMessage(int c)
-        {
-            Debug.Log(TAG + "连接成功");
-        }
+        {}
 
         protected override void OnMessageMessage(byte[] bytes)
-        {
-             Debug.Log(TAG + "OnMessageMessage:" + Encoding.UTF8.GetString(bytes));
-        }
+        {}
     }
 }

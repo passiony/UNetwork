@@ -21,6 +21,8 @@ namespace UNetwork
 
         private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
+        private WebSocketMessageType m_MessageType = WebSocketMessageType.Text;
+        
         public WChannel(HttpListenerWebSocketContext webSocketContext, AService service): base(service, ChannelType.Accept)
         {
             this.WebSocketContext = webSocketContext;
@@ -67,7 +69,7 @@ namespace UNetwork
 
         private WService GetService()
         {
-            return (WService) this.TcpService;
+            return (WService) this.aService;
         }
 
         public async void ConnectAsync(string url)
@@ -121,7 +123,7 @@ namespace UNetwork
                     byte[] bytes = this.queue.Dequeue();
                     try
                     {
-                        await this.webSocket.SendAsync(new ArraySegment<byte>(bytes, 0, bytes.Length), WebSocketMessageType.Binary, true, cancellationTokenSource.Token);
+                        await this.webSocket.SendAsync(new ArraySegment<byte>(bytes, 0, bytes.Length), m_MessageType, true, cancellationTokenSource.Token);
                     }
                     catch (Exception e)
                     {
