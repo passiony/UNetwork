@@ -9,7 +9,6 @@ namespace UNetwork
     /// </summary>
     public class WebSocketComponent : ClientComponent
     {
-        public string Sources = "体感工器具柜";
         public string StationId = "TG004";
 
         private const string TAG = "<color=green>[WebSocket] </color>";
